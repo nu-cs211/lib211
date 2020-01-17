@@ -128,6 +128,27 @@ bool lib211_do_check(
     return false;
 }
 
+bool lib211_do_check_char(
+        char have,
+        char want,
+        const char* expr_have,
+        const char* expr_want,
+        const char* file,
+        int line)
+{
+    if (log_check(have == want, file, line)) return true;
+
+    eprintf("  have: ");
+    eprintf_char_literal(have);
+    eprintf("  (from: %s)\n", expr_have);
+
+    eprintf("  want: ");
+    eprintf_char_literal(want);
+    eprintf("  (from: %s)\n", expr_want);
+
+    return false;
+}
+
 bool lib211_do_check_long(
         long have,
         long want,
@@ -167,27 +188,6 @@ bool lib211_do_check_double(
     if (log_check(have == want, file, line)) return true;
     eprintf("  have: %f  (from: %s)\n", have, expr_have);
     eprintf("  want: %f  (from: %s)\n", want, expr_want);
-    return false;
-}
-
-bool lib211_do_check_char(
-        char have,
-        char want,
-        const char* expr_have,
-        const char* expr_want,
-        const char* file,
-        int line)
-{
-    if (log_check(have == want, file, line)) return true;
-
-    eprintf("  have: ");
-    eprintf_char_literal(have);
-    eprintf("  (from: %s)\n", expr_have);
-
-    eprintf("  want: ");
-    eprintf_char_literal(want);
-    eprintf("  (from: %s)\n", expr_want);
-
     return false;
 }
 
