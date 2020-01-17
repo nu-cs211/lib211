@@ -117,17 +117,18 @@ static void eprintf_string_literal(const char* s) {
     }
 }
 
-bool really_check(bool condition,
-                  const char* assertion,
-                  const char* file,
-                  int line)
+bool lib211_do_check(
+        bool condition,
+        const char* assertion,
+        const char* file,
+        int line)
 {
     if (log_check(condition, file, line)) return true;
     eprintf("  assertion: %s\n", assertion);
     return false;
 }
 
-bool really_check_long(
+bool lib211_do_check_long(
         long have,
         long want,
         const char* expr_have,
@@ -141,7 +142,7 @@ bool really_check_long(
     return false;
 }
 
-bool really_check_size(
+bool lib211_do_check_size(
         size_t have,
         size_t want,
         const char* expr_have,
@@ -155,7 +156,7 @@ bool really_check_size(
     return false;
 }
 
-bool really_check_double(
+bool lib211_do_check_double(
         double have,
         double want,
         const char* expr_have,
@@ -169,7 +170,7 @@ bool really_check_double(
     return false;
 }
 
-bool really_check_char(
+bool lib211_do_check_char(
         char have,
         char want,
         const char* expr_have,
@@ -190,7 +191,7 @@ bool really_check_char(
     return false;
 }
 
-bool really_check_string(
+bool lib211_do_check_string(
         const char* have,
         const char* want,
         const char* expr_have,

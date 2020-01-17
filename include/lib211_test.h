@@ -10,17 +10,17 @@
 //
 //     CHECK( isinf(1.0 / 0.0) );
 //     CHECK( isnan(0.0 / 0.0) );
-//
-// The parentheses around `A` in the first argument to `really_check`
+
+// The parentheses around `A` in the first argument to `lib211_do_check`
 // ensure that if `A` contains a comma then it isn’t considered as
-// separate arguments to `really_check`. The `#A` for the next argument
-// turns into the code that you write for `A` but turned into a string
-// literal. The next two arguments are filled in by the C preprocessor
-// with the filename and line number where `CHECK` is used. A function
-// can't find out what file it was used it, but a C preprocessor macro
-// can, and then it can pass that information to a function to do the
-// real work. The function is defined below.
-#define CHECK(A)            really_check((A), #A, __FILE__, __LINE__)
+// separate arguments to `lib211_do_check`. The `#A` for the next
+// argument turns into the code that you write for `A` but turned into a
+// string literal. The next two arguments are filled in by the C
+// preprocessor with the filename and line number where `CHECK` is used.
+// A function can't find out what file it was used it, but a C
+// preprocessor macro can, and then it can pass that information to a
+// function to do the real work. The function is defined below.
+#define CHECK(A)            lib211_do_check((A), #A, __FILE__, __LINE__)
 
 // CHECK_CHAR(A, B)    checks that A and B evaluate to the same  char.
 // CHECK_INT(A, B)     checks that A and B evaluate to the same  long.
@@ -50,18 +50,18 @@
 // Helper for dispatching type-specific checks above to functions below.
 // Note that `T` stands for “tag,” not “type,” since it might not be a type.
 #define DISPATCH_CHECK(T, A, B) \
-    really_check_##T((A),(B),#A,#B,__FILE__,__LINE__)
+    lib211_do_check_##T((A),(B),#A,#B,__FILE__,__LINE__)
 
 
 // Helper function used by `CHECK` macro above.
-bool really_check(
+bool lib211_do_check(
         bool condition,         // did the check pass?
         char const* assertion,  // source code of condition checked
         char const* file,       // file name where `CHECK` was used
         int line);              // line number in `file`
 
 // Helper function used by `CHECK_CHAR` macro above.
-bool really_check_char(
+bool lib211_do_check_char(
         char have,
         char want,
         char const* expr_have,
@@ -70,7 +70,7 @@ bool really_check_char(
         int line);
 
 // Helper function used by `CHECK_INT` and `CHECK_LONG` macros above.
-bool really_check_long(
+bool lib211_do_check_long(
         long have,              // number we got
         long want,              // number we expected
         char const* expr_have,  // source expression producing `have`
@@ -80,7 +80,7 @@ bool really_check_long(
 
 // Helper function used by `CHECK_UINT`, `CHECK_ULONG`, and `CHECK_SIZE`
 // macros above.
-bool really_check_size(
+bool lib211_do_check_size(
         size_t have,
         size_t want,
         char const* expr_have,
@@ -89,7 +89,7 @@ bool really_check_size(
         int line);
 
 // Helper function used by `CHECK_DOUBLE` macro above.
-bool really_check_double(
+bool lib211_do_check_double(
         double have,
         double want,
         char const* expr_have,
@@ -98,7 +98,7 @@ bool really_check_double(
         int line);
 
 // Helper function used by `CHECK_STRING` macro above.
-bool really_check_string(
+bool lib211_do_check_string(
         char const* have,
         char const* want,
         char const* expr_have,
