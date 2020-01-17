@@ -4,7 +4,6 @@ CFLAGS += -fsanitize=address,undefined
 LDFLAGS =
 
 DESTDIR ?= $(TOV_PUB)
-LIBDIR  ?= $(DESTDIR)/lib
 
 LIB = build/lib211.so
 SRC = eprintf.c read_line.c test_rt.c
@@ -19,7 +18,8 @@ test-install:
 	make -C test test-install
 
 install: $(LIB)
-	install -m 755 $(LIB) $(LIBDIR)
+	install -m 755 $(LIB) $(DESTDIR)/lib
+	install -m 644 include/* $(DESTDIR)/include
 
 $(LIB): $(OBJ)
 	cc -shared -o $@ $^ $(CFLAGS) $(LDFLAGS)
