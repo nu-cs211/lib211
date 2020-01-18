@@ -5,24 +5,32 @@ LDFLAGS =
 
 DESTDIR ?= $(TOV_PUB)
 
-LIB = build/lib211.so
+SLIB = build/lib211.so
+ALIB = build/lib211.a
 SRC = eprintf.c read_line.c test_rt.c
 OBJ = $(SRC:%.c=build/%.o)
 
-lib: $(LIB)
+lib: $(SLIB) $(ALIB)
 
-test: $(LIB)
+test: $(SLIB)
 	make -C test
 
 test-install:
 	make -C test test-install
 
-install: $(LIB)
-	install -m 755 $(LIB) $(DESTDIR)/lib
+install-static: $(ALIB)
+	install -m 755 $^ $(DESTDIR)/lib
 	install -m 644 include/* $(DESTDIR)/include
 
-$(LIB): $(OBJ)
+install: $(SLIB) $(ALIB)
+	install -m 755 $^ $(DESTDIR)/lib
+	install -m 644 include/* $(DESTDIR)/include
+
+$(SLIB): $(OBJ)
 	cc -shared -o $@ $^ $(CFLAGS) $(LDFLAGS)
+
+$(ALIB): $(OBJ)
+	ar -crs $@ $^
 
 build/%.o: src/%.c
 	@mkdir -p "build/$$(dirname $@)"
@@ -32,4 +40,4 @@ clean:
 	rm -Rf build
 	make -C test clean
 
-.PHONY: clean test
+.PHONY: clean test test-install install install-static
