@@ -45,5 +45,5 @@ __attribute__((format(printf, 1, 2)));
 #ifdef ENABLE_DEBUGF
 #   define  debugf           eprintf
 #else
-#   define  debugf(X, ...)   do {} while (false)
+#   define  debugf(...)      do {} while (false)
 #endif
