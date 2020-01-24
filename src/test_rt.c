@@ -213,3 +213,16 @@ bool lib211_do_check_string(
     return false;
 }
 
+bool lib211_do_check_pointer(
+        const void* have,
+        const void* want,
+        const char* expr_have,
+        const char* expr_want,
+        const char* file,
+        int line)
+{
+    if (log_check(have == want, file, line)) return true;
+    eprintf("  have: %p  (from: %s)\n", have, expr_have);
+    eprintf("  want: %p  (from: %s)\n", want, expr_want);
+    return false;
+}

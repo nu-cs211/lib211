@@ -45,6 +45,7 @@
 #define CHECK_SIZE(...)     DISPATCH_CHECK(size, __VA_ARGS__)
 #define CHECK_DOUBLE(...)   DISPATCH_CHECK(double, __VA_ARGS__)
 #define CHECK_STRING(...)   DISPATCH_CHECK(string, __VA_ARGS__)
+#define CHECK_POINTER(...)  DISPATCH_CHECK(pointer, __VA_ARGS__)
 
 
 // Helper for dispatching type-specific checks above to functions below.
@@ -101,6 +102,15 @@ bool lib211_do_check_double(
 bool lib211_do_check_string(
         char const* have,
         char const* want,
+        char const* expr_have,
+        char const* expr_want,
+        char const* file,
+        int line);
+
+// Helper function used by `CHECK_POINTER` macro above.
+bool lib211_do_check_pointer(
+        void const* have,
+        void const* want,
         char const* expr_have,
         char const* expr_want,
         char const* file,
