@@ -23,6 +23,7 @@ install: $(LIB)
 
 $(LIB): $(OBJ)
 	cc -shared -o $@ $^ $(CFLAGS) $(LDFLAGS)
+	-strip --strip-debug --strip-unneeded $@
 
 build/lib211.a: $(OBJ)
 	ar -crs $@ $^
