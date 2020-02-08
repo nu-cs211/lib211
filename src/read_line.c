@@ -9,7 +9,7 @@
 #define READ_LINE_BUF_SIZE 80
 
 static
-void* realloc_or_die(void* old, size_t size)
+void* surely_realloc(void* old, size_t size)
 {
     void* longer = realloc(old, size);
 
@@ -37,7 +37,7 @@ char* fread_line(FILE* inf)
     size_t capacity = READ_LINE_BUF_SIZE;
     size_t size     = 0;
 
-    char* buffer    = realloc_or_die(NULL, capacity);
+    char* buffer    = surely_realloc(NULL, capacity);
 
     for (;;) {
         if (c == EOF || c == '\n') {
@@ -51,7 +51,7 @@ char* fread_line(FILE* inf)
 
         if (size + 1 > capacity) {
             capacity *= 2;
-            buffer = realloc_or_die(buffer, capacity);
+            buffer = surely_realloc(buffer, capacity);
         }
     }
 }
