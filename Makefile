@@ -1,13 +1,16 @@
-CFLAGS  = -std=c11 -pedantic -Wall
-CFLAGS += -g -fpic -Iinclude
-CFLAGS += -fsanitize=address,undefined
-LDFLAGS =
+# For building lib211.
 
-DESTDIR ?= $(TOV_PUB)
+CPPFLAGS    = -Iinclude
+CFLAGS      = -g -fpic -std=c11 -pedantic-errors -Wall
+LDFLAGS     =
+SANFLAGS    = -fsanitize=address,undefined
 
-LIB = build/lib211.so
-SRC = eprintf.c read_line.c test_rt.c
-OBJ = $(SRC:%.c=build/%.o)
+DESTDIR    ?= $(TOV_PUB)
+OBJDIR     ?= build
+
+LIB = $(OBJDIR)/lib211.so
+SRC = $(wildcard src/*.c)
+OBJ = $(SRC:src/%.c=$(OBJDIR)/%.o)
 
 lib: $(LIB)
 
@@ -22,18 +25,24 @@ install: $(LIB)
 	install -m 644 include/* $(DESTDIR)/include
 
 $(LIB): $(OBJ)
-	cc -shared -o $@ $^ $(CFLAGS) $(LDFLAGS)
-	-strip --strip-debug $@
+	cc -shared -o $@ $^ $(CFLAGS) $(SANFLAGS)
+	-strip -S $@
 
-build/lib211.a: $(OBJ)
+$(OBJDIR)/lib211.a: $(OBJ) | $(OBJDIR)
 	ar -crs $@ $^
 
-build/%.o: src/%.c
-	@mkdir -p "build/$$(dirname $@)"
-	cc -c -o $@ $< $(CFLAGS)
+$(OBJDIR)/%.o: src/%.c | $(OBJDIR)
+	cc -c -o $@ $< $(CPPFLAGS) $(CFLAGS)
+
+$(OBJDIR):
+	mkdir -p $@
+
+# $(OBJDIR)/%.o: src/%.c
+# 	@mkdir -p "$(OBJDIR)/$$(dirname $@)"
+# 	cc -c -o $@ $< $(CFLAGS)
 
 clean:
-	rm -Rf build
+	$(RM) -R $(OBJDIR)
 	make -C test clean
 
 .PHONY: clean test test-install install install-static

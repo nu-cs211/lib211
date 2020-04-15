@@ -1,29 +1,36 @@
-CFLAGS  = -g -Wall -pedantic -std=c11 -I../include
-CFLAGS += -fsanitize=address,undefined
-LDFLAGS = -L../build -l211
+LIBDIR   = ../build
+CPPFLAGS = -I../include
+CFLAGS   = -g -Wall -pedantic -std=c11
+SANFLAGS = -fsanitize=address,undefined
+LDFLAGS  = -L$(LIBDIR) -l211
 
-TESTS = build/use_lib211_test
+TESTS    = use_lib211_test
+EXES     = $(TESTS:%=build/%)
 
-test: $(TESTS)
-	for test in $^; do \
+LIBENV   = LD_LIBRARY_PATH=$(LIBDIR)
+
+test: $(EXES)
+	for test in $(TESTS); do \
 	    printf '\n*** Running %s: ***\n' $$test; \
-	    LD_LIBRARY_PATH=../build ./$$test; \
+	    $(LIBENV) build/$$test 2>&1; \
 	done
 
-test-install: $(TESTS)
-	for test in $^; do \
+test-install: $(EXES)
+	for test in $(TESTS); do \
 	    printf '\n*** Running %s: ***\n' $$test; \
-	    ./$$test; \
+	    build/$$test 2>&1; \
 	done
 
-build/%.o: %.c
-	@mkdir -p "$$(dirname $@)"
-	cc -c -o $@ $^ $(CFLAGS)
+build/%: build/%.o
+	cc -o $@ $^ $(SANFLAGS) $(LDFLAGS)
 
-%: %.o
-	cc -o $@ $^ $(CFLAGS) $(LDFLAGS)
+build/%.o: %.c | build
+	cc -c -o $@ $^ $(SANFLAGS) $(CPPFLAGS) $(CFLAGS)
+
+build:
+	mkdir -p build
 
 clean:
-	rm -Rf build
+	$(RM) -R build
 
 .PHONY: clean test
