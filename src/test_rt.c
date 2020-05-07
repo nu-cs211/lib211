@@ -14,31 +14,31 @@ static int fail_count = 0;
 
 static void print_test_results(void)
 {
-    int test_count = pass_count + fail_count;
+    int check_count = pass_count + fail_count;
 
     FILE* fout = fail_count? stderr : stdout;
 
     fprintf(fout, "\n");
 
-    if (! test_count) {
-        fprintf(fout, "No tests.\n");
+    if (! check_count) {
+        fprintf(fout, "No checks.\n");
     } else if (pass_count == 0 || fail_count == 0) {
         const char* descr = pass_count? "passed" : "failed";
 
-        switch (test_count) {
+        switch (check_count) {
             case 1:
-                fprintf(fout, "The only test %s.\n", descr);
+                fprintf(fout, "The only check %s.\n", descr);
                 break;
             case 2:
-                fprintf(fout, "Both tests %s.\n", descr);
+                fprintf(fout, "Both checks %s.\n", descr);
                 break;
             default:
-                fprintf(fout, "All %d tests %s.\n", test_count, descr);
+                fprintf(fout, "All %d checks %s.\n", check_count, descr);
                 break;
         }
     } else {
-        fprintf(fout, "%d of %d tests passed.\n",
-                pass_count, test_count);
+        fprintf(fout, "%d of %d checks passed.\n",
+                pass_count, check_count);
     }
 
     if (fail_count) {
