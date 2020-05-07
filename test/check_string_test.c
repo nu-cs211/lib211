@@ -1,3 +1,5 @@
+#define _XOPEN_SOURCE 700
+
 #include <lib211.h>
 
 #include <signal.h>
