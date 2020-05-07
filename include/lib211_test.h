@@ -3,6 +3,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+// Initializes the test system. This ensures that you see test results
+// even if the program exits before getting to the first check.
+void start_testing(void);
+
 // CHECK(A) checks that `A` evaluates to true. (Returns value of `A` in
 // case you want it.)
 //

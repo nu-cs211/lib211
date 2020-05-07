@@ -46,21 +46,21 @@ static void print_test_results(void)
     }
 }
 
-static void initialize_atexit()
+void start_testing(void)
 {
-    if (! atexit_initialized) {
-        if (atexit(&print_test_results)) {
-            perror("atexit");
-            exit(10);
-        }
+    if (atexit_initialized) return;
 
-        atexit_initialized = true;
+    if (atexit(&print_test_results)) {
+        perror("atexit");
+        exit(10);
     }
+
+    atexit_initialized = true;
 }
 
 bool log_check(bool condition, const char* file, int line)
 {
-    initialize_atexit();
+    start_testing();
 
     if (condition) {
         ++pass_count;
