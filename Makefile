@@ -5,8 +5,8 @@ CFLAGS      = -g -O2 -fpic -std=c11 -pedantic-errors -Wall $(SANFLAGS)
 LDFLAGS     = -shared $(SANFLAGS)
 SANFLAGS    = -fsanitize=address,undefined
 
+TOV_PUB    ?= /usr/local
 DESTDIR    ?= $(TOV_PUB)
-DESTDIR    ?= /usr/local
 OBJDIR     ?= build
 
 DEPFLAGS    = -MT $@ -MMD -MP -MF $(OBJDIR)/$*.d
@@ -25,7 +25,7 @@ test: $(LIB)
 	make -C test
 
 test-install:
-	make -C test test-install
+	make -C test test-install PREFIX=$(DESTDIR)
 
 install: $(LIB)
 	install -m 755 $^ $(DESTDIR)/lib
