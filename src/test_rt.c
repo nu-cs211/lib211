@@ -95,7 +95,6 @@ static const char* c_escape_of_char(char c) {
         case '\t': return "t";
         case '\v': return "v";
         case '\\': return "\\";
-        case '?':  return "?";
         default:   return NULL;
     }
 }
@@ -115,9 +114,13 @@ static void eprintf_escaped_char(char c, char quote)
 }
 
 static void eprintf_char_literal(char c) {
-    eprintf("'");
-    eprintf_escaped_char(c, '\'');
-    eprintf("'");
+    if (c) {
+        eprintf("'");
+        eprintf_escaped_char(c, '\'');
+        eprintf("'");
+    } else {
+        eprintf("0");
+    }
 }
 
 static void eprintf_string_literal(const char* s) {
