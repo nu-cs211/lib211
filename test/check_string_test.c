@@ -29,6 +29,7 @@ static void do_test(char const* a, char const* b)
         freopen("/dev/null", "w", stderr);
 
         CHECK_STRING(a, b);
+        CHECK_STRING(a, b);
 
         exit(0);
     }
@@ -45,12 +46,13 @@ static void do_test(char const* a, char const* b)
         if (a && !strcmp(a, b))
             CHECK_INT( WEXITSTATUS(status), 0 );
         else
-            CHECK_INT( WEXITSTATUS(status), 1 );
+            CHECK_INT( WEXITSTATUS(status), 2 );
     }
 }
 
 int main(int argc, char* argv[])
 {
+    start_testing();
     do_test("A", "A");
     do_test("A", "B");
     do_test(NULL, "B");

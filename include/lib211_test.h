@@ -57,6 +57,9 @@ void start_testing(void);
 #define DISPATCH_CHECK(T, A, B) \
     lib211_do_check_##T((A),(B),#A,#B,__FILE__,__LINE__)
 
+#ifndef LIB211_RAW_EXIT
+#  define exit(E)  lib211_exit_rt(E)
+#endif
 
 // Helper function used by `CHECK` macro above.
 bool lib211_do_check(

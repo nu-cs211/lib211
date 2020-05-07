@@ -1,3 +1,4 @@
+#define LIB211_RAW_EXIT
 #include "lib211_test.h"
 #include "lib211_io.h"
 
@@ -7,15 +8,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-
-static bool atexit_initialized = false;
+static bool atexit_installed = false;
+static bool tests_enabled = false;
 static int pass_count = 0;
 static int fail_count = 0;
 
 static void print_test_results(void)
 {
     int check_count = pass_count + fail_count;
-
     FILE* fout = fail_count? stderr : stdout;
 
     fprintf(fout, "\n");
@@ -40,22 +40,35 @@ static void print_test_results(void)
         fprintf(fout, "%d of %d checks passed.\n",
                 pass_count, check_count);
     }
+}
 
-    if (fail_count) {
-        _exit(fail_count);
+static void exit_hook_function(void)
+{
+    if (tests_enabled) {
+        print_test_results();
+
+        if (fail_count) {
+            _exit(fail_count);
+        }
     }
 }
 
-void start_testing(void)
+static void install_atexit(void)
 {
-    if (atexit_initialized) return;
+    if (atexit_installed) return;
 
-    if (atexit(&print_test_results)) {
+    if (atexit(&exit_hook_function)) {
         perror("atexit");
         exit(10);
     }
 
-    atexit_initialized = true;
+    atexit_installed = true;
+}
+
+void start_testing(void)
+{
+    install_atexit();
+    tests_enabled = true;
 }
 
 bool log_check(bool condition, const char* file, int line)
@@ -233,4 +246,16 @@ bool lib211_do_check_pointer(
     eprintf("  have: %p  (from: %s)\n", have, expr_have);
     eprintf("  want: %p  (from: %s)\n", want, expr_want);
     return false;
+}
+
+_Noreturn void lib211_exit_rt(int result)
+{
+    if (tests_enabled) {
+        print_test_results();
+        tests_enabled = false;
+        eprintf("lib211: exit(%d) while testing\n", result);
+        if (result == 0) result = fail_count;
+    }
+
+    exit(result);
 }
