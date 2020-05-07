@@ -12,7 +12,7 @@ LIBENV   = LD_LIBRARY_PATH=$(LIBDIR)
 test: $(EXES)
 	for test in $(TESTS); do \
 	    printf '\n*** Running %s: ***\n' $$test; \
-	    $(LIBENV) build/$$test 2>&1 || echo "Error exit: $?" >&2; \
+	    $(LIBENV) build/$$test 2>&1 || echo "Error exit: $$?" >&2; \
 	    echo; \
 	done
 
