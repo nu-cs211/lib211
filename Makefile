@@ -1,9 +1,10 @@
 # For building lib211.
 
 CPPFLAGS    = -Iinclude
-CFLAGS      = -g -O2 -fpic -std=c11 -pedantic-errors -Wall $(SANFLAGS)
+CFLAGS      = $(DEBUGFLAG) -O2 -fpic -std=c11 -pedantic-errors -Wall $(SANFLAGS)
 LDFLAGS     = -shared $(SANFLAGS)
 SANFLAGS    = -fsanitize=address,undefined
+DEBUGFLAG   = -g
 
 TOV_PUB    ?= /usr/local
 DESTDIR    ?= $(TOV_PUB)
@@ -36,6 +37,8 @@ $(LIB): $(OBJ)
 
 $(OBJDIR)/lib211.a: $(OBJ)
 	ar -crs $@ $^
+
+$(OBJDIR)/src/alloc_rt.o: DEBUGFLAG =
 
 $(OBJDIR)/%.o: %.c
 $(OBJDIR)/%.o: %.c $(OBJDIR)/%.d
