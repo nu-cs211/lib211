@@ -1,8 +1,8 @@
 LIBDIR   = ../build
 CPPFLAGS = -I../include
-CFLAGS   = -g -Wall -pedantic -std=c11
+CFLAGS   = -g -Wall -pedantic-errors -std=c11 $(SANFLAGS)
+LDFLAGS  = -L$(LIBDIR) -l211 $(SANFLAGS)
 SANFLAGS = -fsanitize=address,undefined
-LDFLAGS  = -L$(LIBDIR) -l211
 
 TESTS    = use_lib211_test check_string_test
 EXES     = $(TESTS:%=build/%)
