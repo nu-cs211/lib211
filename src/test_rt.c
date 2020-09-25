@@ -1,6 +1,7 @@
 #define LIB211_RAW_EXIT
 #include "lib211_test.h"
 #include "lib211_io.h"
+#include "test_reporting.h"
 
 #include <ctype.h>
 #include <unistd.h>
@@ -10,8 +11,10 @@
 
 static bool atexit_installed = false;
 static bool tests_enabled = false;
+
 static int pass_count = 0;
 static int fail_count = 0;
+static int error_count = 0;
 
 static void print_test_results(void)
 {
@@ -71,7 +74,9 @@ void start_testing(void)
     tests_enabled = true;
 }
 
-bool log_check(bool condition, const char* file, int line)
+#define log_check rt211_test_log_check
+
+bool rt211_test_log_check(bool condition, const char* file, int line)
 {
     start_testing();
 
@@ -83,6 +88,14 @@ bool log_check(bool condition, const char* file, int line)
     }
 
     return condition;
+}
+
+void rt211_test_report_error(const char* file, int line)
+{
+    start_testing();
+
+    ++error_count;
+    eprintf("\nError in check (%s:%d):\n", file, line);
 }
 
 static const char* c_escape_of_char(char c) {

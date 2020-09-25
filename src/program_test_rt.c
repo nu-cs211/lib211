@@ -1,7 +1,9 @@
 #define LIB211_RAW_ALLOC
 #include "lib211.h"
 #include "buffer.h"
+#include "test_reporting.h"
 
+#include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,7 +22,7 @@ struct proc_spec null_proc(void)
 }
 
 static char const
-temp_template_template[] = "/tmp/check_command.%zu.XXXXXX";
+temp_template[] = "/tmp/lib211_check_exec.XXXXXX";
 
 static char* read_fd(int fd)
 {
@@ -100,6 +102,55 @@ static char const** grow_clone(char const* const* src_ptr,
     return dst_ptr;
 }
 
+static int fput_cstrlit(FILE* fout, const char* str);
+
+static void check_output_string(
+        const char* file, int line, const char* descr,
+        const char* expected, int fd, bool* saw_error)
+{
+    if (!expected) return;
+
+    char* out = read_fd(fd);
+    if (!out) {
+        perror(NULL);
+        return;
+    }
+
+    if (strcmp(out, expected)) {
+        if (*saw_error) {
+            eprintf("Additional check failure:\n");
+        } else {
+            rt211_test_log_check(false, file, line);
+            *saw_error = true;
+        }
+
+        eprintf("  reason: mismatch in %s\n", descr);
+
+        eprintf("  have: ");
+        fput_cstrlit(stderr, out);
+        eprintf("\n");
+
+        eprintf("  want: ");
+        fput_cstrlit(stderr, expected);
+        eprintf("\n");
+    }
+
+    free(out);
+}
+
+static void eprintf_argv(char const *const* argv)
+{
+    eprintf("  argv[]: {\n");
+
+    while (*argv) {
+        eprintf("    ");
+        fput_cstrlit(stderr, *argv);
+        if (argv + 1) eprintf(",");
+        ++argv;
+    }
+
+    eprintf("  }\n");
+}
 static void do_check_exec(
         char const* whoami,
         char const* file,
@@ -112,7 +163,6 @@ static void do_check_exec(
     extern char const **environ;
 
     size_t envc = env_len(environ);
-    char tempfile[FD_COUNT][sizeof temp_template_template];
     int fd[FD_COUNT] = {-1};
     int res;
 
@@ -129,13 +179,13 @@ static void do_check_exec(
     envv[envc++] = NULL;
 
     FOR_FD(i) {
-        snprintf(tempfile[i], sizeof tempfile[i],
-                 temp_template_template, i);
-    }
+        char tempfile[sizeof temp_template];
+        memcpy(tempfile, temp_template, sizeof tempfile);
 
-    FOR_FD(i) {
-        fd[i] = mkstemp(tempfile[i]);
+        fd[i] = mkstemp(tempfile);
         if (fd[i] < 0) goto finish;
+
+        unlink(tempfile);
     }
 
     if (spec->in) {
@@ -165,56 +215,53 @@ static void do_check_exec(
     // Parent:
 
     int status;
-    res = wait(&status);
+    res = waitpid(pid, &status, 0);
     if (res < 0) goto finish;
 
-    if (WIFEXITED(status)) {
-        int exit_status = WEXITSTATUS(status);
-        if (exit_status == COULD_NOT_EXEC)
-            eprintf("%s: could not execute\n", argv[0]);
-
-        lib211_do_check_long(
-                exit_status, spec->status,
-                "actual exit code", "expected exit code",
-                file, line);
-    } else {
-        int term_sig = WTERMSIG(status);
-        eprintf("%s: exit with signal: %d\n", argv[0], term_sig);
-
-        lib211_do_check_long(
-                term_sig, 0,
-                "actual termination signal", "expected termination signal",
-                file, line);
+    if (WIFEXITED(status) && WEXITSTATUS(status) == COULD_NOT_EXEC) {
+        rt211_test_report_error(file, line);
+        char* msg = read_fd(fd[3]);
+        eprintf("%s: %s\n", argv[0], msg? msg : "could not exec");
+        free(msg);
+        whoami = NULL;
+        goto finish;
     }
 
-    if (spec->out) {
-        char* actual_out = read_fd(fd[1]);
-        if (!actual_out) goto finish;
+    bool saw_error = false;
 
-        lib211_do_check_string(
-                actual_out, spec->out,
-                "actual stdout", "expected stdout",
-                file, line);
-
-        free(actual_out);
+    if (WIFSIGNALED(status)) {
+        rt211_test_report_error(file, line);
+        saw_error = true;
+        eprintf("  reason: process killed by signal %d\n", WTERMSIG(status));
+        eprintf_argv(argv + 1);
     }
 
-    if (spec->err) {
-        char* actual_err = read_fd(fd[2]);
-        if (!actual_err) goto finish;
+    check_output_string(file, line, "stdout",
+            spec->out, fd[1], &saw_error);
+    check_output_string(file, line, "stderr",
+            spec->err, fd[2], &saw_error);
 
-        lib211_do_check_string(
-                actual_err, spec->err,
-                "actual stderr", "expected stderr",
-                file, line);
+    if (WEXITSTATUS(status) != spec->status) {
+        if (saw_error) {
+            eprintf("Additional check failure:\n");
+        } else {
+            rt211_test_log_check(false, file, line);
+            saw_error = true;
+        }
 
-        free(actual_err);
+        eprintf("  reason: exit code mismatch\n");
+        eprintf("  have: %d\n", WEXITSTATUS(status));
+        eprintf("  want: %d\n", spec->status);
     }
 
-    // success == no one to blame
-    whoami = NULL;
+    if (!saw_error) {
+        rt211_test_log_check(true, file, line);
+        whoami = NULL; // success == no one to blame
+    }
 
 finish:
+    if (whoami) perror(whoami);
+
     free(argv);
     free(envv);
 
@@ -223,11 +270,6 @@ finish:
         else close(fd[i]);
     }
 
-    FOR_FD(i) {
-        unlink(tempfile[i]);
-    }
-
-    if (whoami) perror(whoami);
 }
 
 void lib211_do_check_exec(
@@ -252,3 +294,50 @@ void lib211_do_check_command(
             ARRAY_LEN(argv), argv, NULL, spec);
 }
 
+#define PUT(C) \
+    do { \
+        if (fputc(C, fout) < 0) return EOF; \
+        else ++count; \
+    } while (false)
+
+static int fput_cstrlit(FILE* fout, const char* str)
+{
+    size_t count = 0;
+
+    PUT('"');
+
+    char c;
+
+    while ( (c = *str++) ) {
+        switch (c) {
+        case '\\': case '\"':
+            PUT('\\'); PUT(c); break;
+        case '\a':
+            PUT('\\'); PUT('a'); break;
+        case '\b':
+            PUT('\\'); PUT('b'); break;
+        case '\f':
+            PUT('\\'); PUT('f'); break;
+        case '\n':
+            PUT('\\'); PUT('n'); break;
+        case '\r':
+            PUT('\\'); PUT('r'); break;
+        case '\t':
+            PUT('\\'); PUT('t'); break;
+        case '\v':
+            PUT('\\'); PUT('v'); break;
+        default:
+            if (isgraph(c) || c == ' ') {
+                PUT(c);
+            } else {
+                int res = fprintf(fout, "\\x%02x", c);
+                if (res < 0) return EOF;
+                else count += res;
+            }
+        }
+    }
+
+    PUT('"');
+
+    return count;
+}
