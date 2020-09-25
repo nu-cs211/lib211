@@ -1,4 +1,6 @@
 #include <lib211.h>
+#include <lib211_alloc_limit.h>
+
 #include <assert.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -12,10 +14,6 @@
 #define GREEN   "\33[0;32m"
 #define RVRED   "\33[0;41;37m"
 
-void rt211_alloc_set_limit_total(size_t),
-     rt211_alloc_set_limit_peak(size_t),
-     rt211_alloc_set_no_limit(void);
-
 static size_t stress_count  = 10000;
 static size_t stress_chunk  = 10000;
 
@@ -27,13 +25,13 @@ static void test_no_init(void)
 
 static void test_no_limit(void)
 {
-    rt211_alloc_set_no_limit();
+    alloc_limit_set_no_limit();
     test_no_init();
 }
 
 static void test_limit_total(void)
 {
-    rt211_alloc_set_limit_total(10);
+    alloc_limit_set_total(10);
 
     assert( malloc(4) );
     assert( ! malloc(8) );
@@ -45,7 +43,7 @@ static void test_limit_total(void)
 
 static void test_limit_peak(void)
 {
-    rt211_alloc_set_limit_peak(10);
+    alloc_limit_set_peak(10);
 
     void *p1, *p2, *p3;
 
@@ -137,7 +135,7 @@ static void test_stressful(void) {
     for (size_t i = 0; i < stress_count; ++i)
         total += allocations[i].size = rand() % stress_chunk + 1;
 
-    rt211_alloc_set_limit_peak(total);
+    alloc_limit_set_peak(total);
 
     for (size_t i = 0; i < stress_count; ++i)
         assert( (allocations[i].ptr = malloc(allocations[i].size)) );

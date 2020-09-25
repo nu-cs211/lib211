@@ -1,11 +1,7 @@
-//
-// VERY IMPORTANT NOT TO DO THIS:
-// #include "lib211_alloc.h"
-//
-
 #define _XOPEN_SOURCE 700
 #define LIB211_RAW_ALLOC
 
+#include "lib211_alloc_limit.h"
 #include "lib211.h"
 
 #include <ctype.h>
@@ -92,18 +88,18 @@ static void tracef(char const* format, ...)
     fprintf(trace_out, "\n");
 }
 
-void rt211_alloc_set_no_limit(void)
+void alloc_limit_set_no_limit(void)
 {
     alloc_limit_state = NO_LIMIT;
 }
 
-void rt211_alloc_set_limit_total(size_t n)
+void alloc_limit_set_total(size_t n)
 {
     alloc_limit_state = LIMIT_TOTAL;
     bytes_remaining = n;
 }
 
-void rt211_alloc_set_limit_peak(size_t n)
+void alloc_limit_set_peak(size_t n)
 {
     alloc_limit_state = LIMIT_PEAK;
     bytes_remaining = n;
