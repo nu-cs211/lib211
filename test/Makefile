@@ -6,7 +6,10 @@ LDFLAGS  = -L$(LIBDIR) -l211 $(SANFLAGS)
 SANFLAGS = -fsanitize=address,undefined
 LIBENV   = LD_LIBRARY_PATH=$(LIBDIR)
 
-TESTS    = use_lib211_test check_string_test alloc_limit_test
+TESTS    = use_lib211_test \
+           check_string_test \
+           alloc_limit_test \
+           check_command_test
 EXES     = $(TESTS:%=build/%)
 SYS_EXES = $(TESTS:%=build/%.system)
 
