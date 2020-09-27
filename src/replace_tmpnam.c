@@ -40,8 +40,8 @@ try_tempnam(char const* dir, char const* pfx)
     if (!dir) return NULL;
     if (!pfx) pfx = "tempnam";
 
-    char dummy;
-    size_t buf_size = snprintf(&dummy, sizeof dummy,
+    char dummy[sizeof TEMPNAM_TEMPLATE];
+    size_t buf_size = snprintf(dummy, sizeof dummy,
             TEMPNAM_TEMPLATE, dir, pfx);
 
     char* buf = malloc(buf_size);
