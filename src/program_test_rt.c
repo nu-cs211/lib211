@@ -1,3 +1,4 @@
+#define _XOPEN_SOURCE 700
 #define LIB211_RAW_ALLOC
 #include "lib211.h"
 #include "buffer.h"
@@ -9,6 +10,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #define FD_COUNT          4
 #define FOR_FD(I)         for (size_t I = 0; I < FD_COUNT; ++I)

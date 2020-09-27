@@ -1,3 +1,4 @@
+#define _XOPEN_SOURCE 700
 #include <lib211.h>
 #include <lib211_alloc_limit.h>
 
@@ -6,8 +7,10 @@
 #include <signal.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include <sys/wait.h>
 #include <unistd.h>
+
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #define NORMAL  "\33[0m"
 #define RED     "\33[0;31m"
