@@ -73,7 +73,7 @@ static void test_env_exit_code(const char* env1, int expect_status)
     spec.status = expect_status;
     spec.err    = NULL;
 
-    char const* argv[] = { "./alloc_limit_test" };
+    char const* argv[] = { "build/alloc_limit_test" };
     CHECK_EXEC_ENV(1, argv, env1, &spec);
 }
 
