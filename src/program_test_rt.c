@@ -1,5 +1,7 @@
 #define _XOPEN_SOURCE 700
 #define LIB211_RAW_ALLOC
+#define LIB211_RAW_EXIT
+
 #include "lib211.h"
 #include "buffer.h"
 #include "test_reporting.h"

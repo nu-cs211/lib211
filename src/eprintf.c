@@ -1,3 +1,6 @@
+#define LIB211_RAW_ALLOC
+#define LIB211_RAW_EXIT
+
 #include "lib211_io.h"
 
 #include <stdarg.h>

@@ -1,5 +1,7 @@
-#pragma once
+#ifndef _LIB211_IO_H_
+#define _LIB211_IO_H_
 
+#include "lib211_alloc.h"
 #include <stdio.h>
 
 // Reads a line of input on stdin. The returned string is allocated by
@@ -47,3 +49,5 @@ __attribute__((format(printf, 1, 2)));
 #else
 #   define  debugf(...)      do {} while (false)
 #endif
+
+#endif // _LIB211_IO_H_

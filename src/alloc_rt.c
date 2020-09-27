@@ -1,10 +1,12 @@
 #define _XOPEN_SOURCE 700
 #define LIB211_RAW_ALLOC
+#define LIB211_RAW_EXIT
 
 #include "lib211_alloc_limit.h"
 #include "lib211.h"
 
 #include <ctype.h>
+#include <errno.h>
 #include <limits.h>
 #include <stdarg.h>
 #include <stdbool.h>

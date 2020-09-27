@@ -57,9 +57,6 @@ void start_testing(void);
 #define DISPATCH_CHECK(T, A, B) \
     lib211_do_check_##T((A),(B),#A,#B,__FILE__,__LINE__)
 
-#ifndef LIB211_RAW_EXIT
-#  define exit(E)  lib211_exit_rt(E)
-#endif
 
 // Helper function used by `CHECK` macro above.
 bool lib211_do_check(
@@ -123,3 +120,10 @@ bool lib211_do_check_pointer(
         char const* file,
         int line);
 
+// We're going to override exit(3) with a function that complains if
+// it's called in the midst of a test.
+#ifndef LIB211_RAW_EXIT
+#  define exit(E)  lib211_exit_rt(E)
+#endif
+
+_Noreturn void lib211_exit_rt(int);
