@@ -79,7 +79,7 @@ static bool trace_enabled(void)
     return trace_out != NULL;
 }
 
-static void tracef(char const* format, ...)
+static void alloc_tracef(char const* format, ...)
 {
     if (!trace_enabled()) return;
 
@@ -240,7 +240,8 @@ static bool alloc_debug_may_alloc(size_t n)
     if ((alloc_limit_state == LIMIT_TOTAL || alloc_limit_state == LIMIT_PEAK)
             && n > bytes_remaining)
     {
-        tracef("lib211_alloc: preventing allocation of %zu bytes "
+        alloc_tracef(
+                "lib211_alloc: preventing allocation of %zu bytes "
                 "because\nremaining limit is %zu",
                 n, bytes_remaining);
         errno = ENOMEM;
@@ -275,7 +276,7 @@ static void alloc_debug_will_free(void* p)
 
 void* rt211_calloc(size_t nmemb, size_t size)
 {
-    tracef("calloc(%zu, %zu)", nmemb, size);
+    alloc_tracef("calloc(%zu, %zu)", nmemb, size);
 
     if (size <= SIZE_MAX / nmemb &&
             alloc_debug_may_alloc(nmemb * size))
@@ -294,13 +295,13 @@ static void* rt211_malloc_quiet(size_t size)
 
 void* rt211_malloc(size_t size)
 {
-    tracef("malloc(%zu)", size);
+    alloc_tracef("malloc(%zu)", size);
     return rt211_malloc_quiet(size);
 }
 
 void rt211_free(void *ptr)
 {
-    tracef("free(%p)", ptr);
+    alloc_tracef("free(%p)", ptr);
 
     alloc_debug_will_free(ptr);
     free(ptr);
@@ -308,7 +309,7 @@ void rt211_free(void *ptr)
 
 void* rt211_realloc(void *ptr, size_t new_size)
 {
-    tracef("realloc(%p, %zu)", ptr, new_size);
+    alloc_tracef("realloc(%p, %zu)", ptr, new_size);
 
     if (!ptr) return rt211_malloc_quiet(new_size);
 
@@ -333,7 +334,7 @@ failure:
 
 void* rt211_reallocf(void *ptr, size_t new_size)
 {
-    tracef("reallocf(%p, %zu)", ptr, new_size);
+    alloc_tracef("reallocf(%p, %zu)", ptr, new_size);
 
     if (!ptr) return rt211_malloc_quiet(new_size);
 
