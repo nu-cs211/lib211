@@ -12,6 +12,10 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+#ifndef __APPLE__
+# include <time.h>
+#endif
+
 #define NORMAL  "\33[0m"
 #define RED     "\33[0;31m"
 #define GREEN   "\33[0;32m"
@@ -133,7 +137,11 @@ static void test_stressful(void) {
     size_t total = 0;
     void* p;
 
+#ifdef __APPLE__
     sranddev();
+#else
+    srand(time(NULL));
+#endif
 
     for (size_t i = 0; i < stress_count; ++i)
         total += allocations[i].size = rand() % stress_chunk + 1;
