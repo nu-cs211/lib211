@@ -243,6 +243,7 @@ static bool alloc_debug_may_alloc(size_t n)
         tracef("lib211_alloc: preventing allocation of %zu bytes "
                 "because\nremaining limit is %zu",
                 n, bytes_remaining);
+        errno = ENOMEM;
         return false;
     }
 
