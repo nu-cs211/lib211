@@ -1,34 +1,74 @@
 #pragma once
 
-struct proc_spec
-{
-    int status;
-    char const *in, *out, *err;
-};
+// void CHECK_COMMAND(
+//     const char* command,
+//     const char* actual_input,
+//     const char* expected_stdout,
+//     const char* expected_stderr,
+//     int         expected_exit_code);
+//
+// Tests the shell command `command`.
+//
+// Runs the command and sends it the contents of `actual_input`
+// on its standard input. The test passes if the command’s
+// standard output matches `expected_stdout`, its standard error
+// matches `expected_stderr`, and its exit code matches
+// expected_exit_code.
+//
+// If `expected_stdout` is ANY_OUTPUT then stdout isn’t checked, and
+// likewise if `expected_stderr` is ANY_OUTPUT then stderr isn’t
+// checked. If `expected_exit_code` is ANY_EXIT the the exit code isn’t
+// checked, and if it’s ANY_EXIT_ERROR then any non-zero exit code
+// passes.
+//
+#define CHECK_COMMAND(CMD, IN, OUT, ERR, RES) \
+    lib211_do_check_command(__FILE__, __LINE__, CMD, IN, OUT, ERR, RES)
 
-typedef struct proc_spec PROC_SPEC;
+// void CHECK_EXEC(
+//     const char* argv[],
+//     const char* actual_input,
+//     const char* expected_stdout,
+//     const char* expected_stderr,
+//     int         expected_exit_code);
+//
+// Runs the program `argv[0]`, passing it the remainder of `argv`
+// (up to the first NULL) as arguments.
+//
+// The remaining parameters and behavior are the same as
+// CHECK_COMMAND.
+#define CHECK_EXEC(ARGV, IN, OUT, ERR, RES) \
+    lib211_do_check_exec(__FILE__, __LINE__, ARGV, IN, OUT, ERR, RES)
 
-#define SPEC_BLANK  ((struct proc_spec) {0, "", "", ""})
+// Pass for `expected_stdout` and/or `expected_stderr` if you
+// don’t want to check those.
+#define ANY_OUTPUT      NULL
 
-#define CHECK_COMMAND(cmd, spec) \
-    lib211_do_check_command(__FILE__, __LINE__, cmd, spec)
+// Pass for `expected_exit_code` if you don’t care what the exit
+// code is.
+#define ANY_EXIT        (-2)
 
-#define CHECK_EXEC(argc, argv, spec) \
-    lib211_do_check_exec(__FILE__, __LINE__, argc, argv, NULL, spec)
+// Pass for `expected_exit_code` if any non-zero exit code should
+// succeed and zero should fail.
+#define ANY_EXIT_ERROR  (-1)
 
-#define CHECK_EXEC_ENV(argc, argv, env, spec) \
-    lib211_do_check_exec(__FILE__, __LINE__, argc, argv, env, spec)
+///
+/// Internals
+///
 
 void lib211_do_check_command(
-        char const             *file,
+        const char             *file,
         int                     line,
-        char const             *command,
-        struct proc_spec const *spec);
+        const char             *command,
+        const char             *in,
+        const char             *out,
+        const char             *err,
+        int                    status);
 
 void lib211_do_check_exec(
-        char const             *file,
+        const char             *file,
         int                     line,
-        int                     argc,
-        char const             *argv[],
-        char const             *env1,
-        struct proc_spec const *spec);
+        const char             *argv[],
+        const char             *in,
+        const char             *out,
+        const char             *err,
+        int                    status);

@@ -22,11 +22,6 @@
 #define READ_FD_BUF_LEN   256
 #define ARRAY_LEN(A)      (sizeof (A) / sizeof *(A))
 
-struct proc_spec null_proc(void)
-{
-    return (struct proc_spec) { 0, "", "", "" };
-}
-
 static char const
 temp_template[] = "/tmp/lib211_check_exec.XXXXXX";
 
@@ -87,34 +82,13 @@ static int write_string(int fd, char const* str)
     return write_range(fd, str, str + strlen(str));
 }
 
-static size_t env_len(char const** begin)
-{
-    char const** end = begin;
-    while (*end) ++end;
-    return end - begin;
-}
-
-static char const** grow_clone(char const* const* src_ptr,
-                               size_t old_size,
-                               size_t front_growth,
-                               size_t back_growth)
-{
-    size_t new_size = old_size + front_growth + back_growth;
-    char const** dst_ptr = malloc(new_size * sizeof dst_ptr[0]);
-
-    if (dst_ptr)
-        memcpy(dst_ptr + front_growth, src_ptr, old_size * sizeof dst_ptr[0]);
-
-    return dst_ptr;
-}
-
 static int fput_cstrlit(FILE* fout, const char* str);
 
 static void check_output_string(
         const char* file, int line, const char* descr,
         const char* expected, int fd, bool* saw_error)
 {
-    if (!expected) return;
+    if (expected == ANY_OUTPUT) return;
 
     char* out = read_fd(fd);
     if (!out) {
@@ -161,28 +135,14 @@ static void do_check_exec(
         char const* whoami,
         char const* file,
         int line,
-        int argc,
-        char const* orig_argv[],
-        char const* env1,
-        struct proc_spec const* spec)
+        char const* argv[],
+        const char             *in,
+        const char             *out,
+        const char             *err,
+        int                    code)
 {
-    extern char const **environ;
-
-    size_t envc = env_len(environ);
     int fd[FD_COUNT] = {-1};
     int res;
-
-    char const** argv = grow_clone(orig_argv, argc, 1, 1);
-    char const** envv = grow_clone(environ, envc, 0, 2);
-
-    if (!argv || !envv) goto finish;
-
-    argv[0] = "/usr/bin/env";
-    argc++;
-    argv[argc++] = NULL;
-
-    envv[envc++] = env1;
-    envv[envc++] = NULL;
 
     FOR_FD(i) {
         char tempfile[sizeof temp_template];
@@ -194,8 +154,8 @@ static void do_check_exec(
         unlink(tempfile);
     }
 
-    if (spec->in) {
-        res = write_string(fd[0], spec->in);
+    if (in && in[0]) {
+        res = write_string(fd[0], in);
         if (res < 0) goto finish;
 
         res = lseek(fd[0], 0, SEEK_SET);
@@ -211,7 +171,7 @@ static void do_check_exec(
             close(fd[i]);
         }
 
-        execve(argv[0], (char**)argv, (char**)envv);
+        execvp(argv[0], (char**)argv);
 
         dup2(3, 2);
         eprintf("%d %s\n", errno, strerror(errno));
@@ -243,11 +203,13 @@ static void do_check_exec(
     }
 
     check_output_string(file, line, "stdout",
-            spec->out, fd[1], &saw_error);
+            out, fd[1], &saw_error);
     check_output_string(file, line, "stderr",
-            spec->err, fd[2], &saw_error);
+            err, fd[2], &saw_error);
 
-    if (WEXITSTATUS(status) != spec->status) {
+    int got_code = WEXITSTATUS(status);
+    if ((code >= 0 && got_code != code) ||
+            (code == ANY_EXIT_ERROR && got_code == 0)) {
         if (saw_error) {
             eprintf("Additional check failure:\n");
         } else {
@@ -256,8 +218,11 @@ static void do_check_exec(
         }
 
         eprintf("  reason: exit code mismatch\n");
-        eprintf("  have: %d\n", WEXITSTATUS(status));
-        eprintf("  want: %d\n", spec->status);
+        eprintf("  have: %d\n", got_code);
+        if (code == ANY_EXIT_ERROR)
+            eprintf("  want: non-zero\n");
+        else
+            eprintf("  want: %d\n", code);
     }
 
     if (!saw_error) {
@@ -268,36 +233,35 @@ static void do_check_exec(
 finish:
     if (whoami) perror(whoami);
 
-    free(argv);
-    free(envv);
-
     FOR_FD(i) {
         if (fd[i] < 0) break;
         else close(fd[i]);
     }
-
 }
 
 void lib211_do_check_exec(
         char const             *file,
         int                     line,
-        int                     argc,
         char const             *argv[],
-        char const             *env1,
-        struct proc_spec const *spec)
+        const char             *in,
+        const char             *out,
+        const char             *err,
+        int                    code)
 {
-    do_check_exec("check_exec", file, line, argc, argv, env1, spec);
+    do_check_exec("check_exec", file, line, argv, in, out, err, code);
 }
 
 void lib211_do_check_command(
         char const             *file,
         int                     line,
         char const             *command,
-        struct proc_spec const *spec)
+        const char             *in,
+        const char             *out,
+        const char             *err,
+        int                    code)
 {
-    char const* argv[] = {"/bin/sh", "-c", command};
-    do_check_exec("check_command", file, line,
-            ARRAY_LEN(argv), argv, NULL, spec);
+    char const* argv[] = {"/bin/sh", "-c", command, NULL};
+    do_check_exec("check_command", file, line, argv, in, out, err, code);
 }
 
 #define PUT(C) \

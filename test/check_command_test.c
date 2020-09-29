@@ -2,79 +2,70 @@
 
 static void test_true_cmd(void)
 {
-    PROC_SPEC spec = SPEC_BLANK;
-    CHECK_COMMAND("true", &spec);
+    CHECK_COMMAND("true", "", "", "", 0);
 }
 
 static void test_false_cmd(void)
 {
-    PROC_SPEC spec = SPEC_BLANK;
-    spec.status = 1;
-    CHECK_COMMAND("false", &spec);
+    CHECK_COMMAND("false", "", "", "", 1);
 }
 
 static void test_exit_5_cmd(void)
 {
-    PROC_SPEC spec = SPEC_BLANK;
-    spec.status = 5;
-    CHECK_COMMAND("exit 5", &spec);
+    CHECK_COMMAND("exit 5",
+            "", "", "", 5);
 }
 
 static void test_echo_out_cmd(void)
 {
-    PROC_SPEC spec = SPEC_BLANK;
-    spec.out = "hello world\n";
-    CHECK_COMMAND("echo hello world", &spec);
+    CHECK_COMMAND("echo hello world",
+            "", "hello world\n", "", 0);
 }
 
 static void test_echo_err_cmd(void)
 {
-    PROC_SPEC spec = SPEC_BLANK;
-    spec.err    = "hello world\n";
-    CHECK_COMMAND("echo hello world >&2", &spec);
+    CHECK_COMMAND("echo hello world >&2",
+            "", "", "hello world\n", 0);
 }
 
 static void test_echo_both_cmd(void)
 {
-    PROC_SPEC spec = SPEC_BLANK;
-    spec.err    = "goodbye world\n";
-    spec.out    = "hello world\n";
-    CHECK_COMMAND("echo hello world; echo goodbye world >&2", &spec);
+    CHECK_COMMAND("echo hello world; echo goodbye world >&2",
+            "", "hello world\n", "goodbye world\n", 0);
 }
 
 
 static void test_grep_exec(void)
 {
-    PROC_SPEC spec = {
-        .status = 0,
-        .in     = "spaceless\nspace full\n   \nnope\n",
-        .err    = "",
-        .out    = "space full\n   \n"
-    };
-
-    char const* argv[] = { "grep", "-E", " " };
-    CHECK_EXEC(3, argv, &spec);
+    char const* argv[] = { "grep", "-E", " ", NULL };
+    CHECK_EXEC(argv,
+            "spaceless\nspace full\n   \nnope\n",
+            "space full\n   \n",
+            "",
+            0);
 }
 
 static void test_cat_exec(void)
 {
-    PROC_SPEC spec = SPEC_BLANK;
-    spec.status = 1;
-    spec.in     = "blah blah blah\n";
-    spec.err    = "cat: meow: No such file or directory\n";
 
-    char const* argv[] = { "cat", "meow" };
-    CHECK_EXEC(2, argv, &spec);
+    char const* argv[] = { "cat", "meow", NULL };
+    CHECK_EXEC(argv,
+            "blah blah blah\n",
+            "",
+            "cat: meow: No such file or directory\n",
+            1);
 }
 
 static void test_env_exit_code(const char* env1, int expect_status)
 {
-    PROC_SPEC spec = SPEC_BLANK;
-    spec.status = expect_status;
-    spec.err    = NULL;
+    char const* argv[] = {
+        "/usr/bin/env",
+        env1,
+        "build/alloc_limit_test",
+        NULL,
+    };
 
-    char const* argv[] = { "build/alloc_limit_test" };
-    CHECK_EXEC_ENV(1, argv, env1, &spec);
+    CHECK_EXEC(argv, "", "", ANY_OUTPUT, expect_status);
 }
 
 static void test_env_alloc_limit_50_B(void)
