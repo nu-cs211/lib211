@@ -185,7 +185,7 @@ static void do_check_exec(
     if (res < 0) goto finish;
 
     if (WIFEXITED(status) && WEXITSTATUS(status) == COULD_NOT_EXEC) {
-        rt211_test_report_error(file, line);
+        rt211_test_log_error("external program check", file, line);
         char* msg = read_fd(fd[3]);
         eprintf("%s: %s\n", argv[0], msg? msg : "could not exec");
         free(msg);
@@ -196,7 +196,7 @@ static void do_check_exec(
     bool saw_error = false;
 
     if (WIFSIGNALED(status)) {
-        rt211_test_report_error(file, line);
+        rt211_test_log_error("external program check", file, line);
         saw_error = true;
         eprintf("  reason: process killed by signal %d\n", WTERMSIG(status));
         eprintf_argv(argv + 1);

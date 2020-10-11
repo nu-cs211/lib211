@@ -95,22 +95,20 @@ static void run_test(char const* name, void (*test_fn)(void))
     fprintf(stderr, " done\n");
 }
 
-#define TEST(N)  run_test(#N, &N)
-
 int main(void)
 {
-    TEST(test_true_cmd);
-    TEST(test_false_cmd);
-    TEST(test_exit_5_cmd);
-    TEST(test_echo_out_cmd);
-    TEST(test_echo_err_cmd);
-    TEST(test_echo_both_cmd);
+    RUN_TEST(test_true_cmd);
+    RUN_TEST(test_false_cmd);
+    RUN_TEST(test_exit_5_cmd);
+    RUN_TEST(test_echo_out_cmd);
+    RUN_TEST(test_echo_err_cmd);
+    RUN_TEST(test_echo_both_cmd);
 
-    TEST(test_grep_exec);
-    TEST(test_cat_exec);
+    RUN_TEST(test_grep_exec);
+    RUN_TEST(test_cat_exec);
 
-    TEST(test_env_alloc_limit_50_B);
-    TEST(test_env_alloc_limit_50_MB);
-    TEST(test_env_heap_limit_50_MB);
-    TEST(test_env_heap_limit_50_GB);
+    RUN_TEST(test_env_alloc_limit_50_B);
+    RUN_TEST(test_env_alloc_limit_50_MB);
+    RUN_TEST(test_env_heap_limit_50_MB);
+    RUN_TEST(test_env_heap_limit_50_GB);
 }
