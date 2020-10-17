@@ -30,9 +30,8 @@ static unsigned error_count  = 0;
 static void print_test_results(void)
 {
     unsigned check_count = pass_count + fail_count + error_count;
-
     FILE* fout = fail_count || error_count ? stderr : stdout;
-
+    bool const use_color = isatty(fileno(fout));
     char const* label_style = has_run_tests ? "test" : "check";
 
     fprintf(fout, "\n");
@@ -43,19 +42,19 @@ static void print_test_results(void)
     }
 
     if (error_count) {
+        if (use_color) fprintf(fout, RVRED);
         fprintf(fout,
-                RVRED
-                "*** %d %s%s could not be completed due to errors."
-                NORMAL,
+                "*** %d %s%s could not be completed due to errors.",
                 error_count,
                 label_style,
                 error_count == 1 ? "" : "s");
+        if (use_color) fprintf(fout, NORMAL);
     }
 
     if (!error_count && !(pass_count && fail_count)) {
         const char* descr = pass_count
-            ? GREEN "passed" NORMAL
-            : RED   "failed" NORMAL;
+            ? use_color ? GREEN "passed" NORMAL : "passed"
+            : use_color ? RED   "failed" NORMAL : "failed";
 
         switch (check_count) {
             case 1:
@@ -180,6 +179,15 @@ static void eprintf_string_literal(const char* s) {
     }
 }
 
+static void color_word(const char* color, const char* word)
+{
+    printf("%s%s%s.\n",
+            color ? color : "",
+            word,
+            color ? NORMAL : "");
+    fflush(stdout);
+}
+
 bool lib211_do_run_test(
         void (*test_fn)(void),
         char const* source_expr,
@@ -188,6 +196,8 @@ bool lib211_do_run_test(
 {
     start_testing();
     has_run_tests = true;
+
+    bool const use_color = isatty(fileno(stdout));
 
     printf("%s... ", source_expr);
     fflush(stdout);
@@ -215,21 +225,20 @@ bool lib211_do_run_test(
     if (WIFEXITED(status)) {
         switch (WEXITSTATUS(status)) {
         case 0:
-            printf(GREEN "passed" NORMAL ".\n");
-            fflush(stdout);
+            color_word(use_color ? GREEN : NULL, "passed");
             ++pass_count;
             return true;
 
         case 1:
-            printf("\n%s " RED "failed" NORMAL ".\n", source_expr);
-            fflush(stdout);
+            printf("\n%s ", source_expr);
+            color_word(use_color ? RED : NULL, "failed");
             ++fail_count;
             return false;
         }
     }
 
-    printf("\n%s " RVRED "errored" NORMAL ".\n", source_expr);
-    fflush(stdout);
+    printf("\n%s ", source_expr);
+    color_word(use_color ? RVRED : NULL, "errored");
     ++error_count;
     return false;
 
