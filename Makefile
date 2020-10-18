@@ -16,9 +16,11 @@ COMPILE.c   = $(CC) $(DEPFLAGS) $(CFLAGS) $(CPPFLAGS) -c
 OUTPUT_OPT  = -o $@
 MKOUTDIR    = mkdir -p "$$(dirname "$@")"
 
-LIB_SAN     = $(OBJDIR)/lib211.so
-LIB_UNSAN   = $(OBJDIR)/lib211-unsan.so
-LIBS        = $(LIB_SAN) $(LIB_UNSAN)
+ALIB_SAN    = $(OBJDIR)/lib211.a
+ALIB_UNSAN  = $(OBJDIR)/lib211-unsan.a
+SOLIB_SAN   = $(OBJDIR)/lib211.so
+SOLIB_UNSAN = $(OBJDIR)/lib211-unsan.so
+LIBS        = $(ALIB_SAN) $(ALIB_UNSAN) $(SOLIB_SAN) $(SOLIB_UNSAN)
 
 SRCS        = $(wildcard src/*.c)
 OBJS_SAN    = $(SRCS:%.c=$(OBJDIR)/%.o)
@@ -34,19 +36,19 @@ test-install:
 	make -C test test-install PREFIX=$(DESTDIR)
 
 install: $(LIBS)
-	install -m 755 $^ $(DESTDIR)/lib
-	install -m 644 include/* $(DESTDIR)/include
+	$(SUDO) install -m 755 $^ $(DESTDIR)/lib
+	$(SUDO) install -m 644 include/* $(DESTDIR)/include
 
-$(LIB_SAN): $(OBJS_SAN)
+$(SOLIB_SAN): $(OBJS_SAN)
 	cc -o $@ $^ $(LDFLAGS) $(SANFLAGS)
 
-$(LIB_UNSAN): $(OBJS_UNSAN)
+$(SOLIB_UNSAN): $(OBJS_UNSAN)
 	cc -o $@ $^ $(LDFLAGS)
 
-$(OBJDIR)/lib211.a: $(OBJS_SAN)
+$(ALIB_SAN): $(OBJS_SAN)
 	ar -crs $@ $^
 
-$(OBJDIR)/lib211-unsan.a: $(OBJS_UNSAN)
+$(ALIB_UNSAN): $(OBJS_UNSAN)
 	ar -crs $@ $^
 
 $(OBJDIR)/src/alloc_rt.o: DEBUGFLAG =
