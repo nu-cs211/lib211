@@ -40,15 +40,19 @@ try_tempnam(char const* dir, char const* pfx)
     if (!dir) return NULL;
     if (!pfx) pfx = "tempnam";
 
-    char dummy[sizeof TEMPNAM_TEMPLATE];
-    size_t buf_size = snprintf(dummy, sizeof dummy,
+    char buf1[2 * sizeof TEMPNAM_TEMPLATE];
+    size_t needed = snprintf(buf1, sizeof buf1,
             TEMPNAM_TEMPLATE, dir, pfx);
 
-    char* buf = malloc(buf_size);
-    if (!buf) return NULL;
+    char* buf2 = malloc(needed);
+    if (!buf2) return NULL;
 
-    snprintf(buf, buf_size, TEMPNAM_TEMPLATE, dir, pfx);
-    return mkstemp_close_unlink(buf, "tempnam");
+    if (needed > sizeof buf1)
+        snprintf(buf2, needed, TEMPNAM_TEMPLATE, dir, pfx);
+    else
+        memcpy(buf2, buf1, needed);
+
+    return mkstemp_close_unlink(buf2, "tempnam");
 }
 
 char*
