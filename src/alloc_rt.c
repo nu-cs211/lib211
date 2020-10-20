@@ -43,9 +43,8 @@ static enum {
 // decreasing (unless you reset it explicitly).
 static size_t bytes_remaining;
 
-FILE* trace_out = NULL;
 
-static char const* rt211_trace = NULL;
+static FILE* trace_out = NULL;
 
 static void close_trace_out(void)
 {
@@ -55,27 +54,32 @@ static void close_trace_out(void)
     }
 }
 
+static bool trace_is_init = false;
 static void tracing_init_once(void)
 {
+    if (trace_is_init) return;
+
     atexit(&close_trace_out);
 
-    rt211_trace = getenv("RT211_TRACE");
-    if (!rt211_trace) {
-        rt211_trace = "";
-    } else if (rt211_trace[0] == '&' && rt211_trace[1] != 0) {
+    const char* trace_dst = getenv("RT211_TRACE");
+    if (! trace_dst) {
+        // all set
+    } else if (trace_dst[0] == '&' && trace_dst[1] != 0) {
         char* endptr;
-        long fd = strtol(&rt211_trace[1], &endptr, 10);
+        long fd = strtol(&trace_dst[1], &endptr, 10);
         if (*endptr == 0 && 0 <= fd && fd <= (long)INT_MAX) {
             trace_out = fdopen((int)fd, "w");
         }
     } else {
-        trace_out = fopen(rt211_trace, "w");
+        trace_out = fopen(trace_dst, "w");
     }
+
+    trace_is_init = true;
 }
 
 static bool trace_enabled(void)
 {
-    if (!rt211_trace) tracing_init_once();
+    if (!trace_is_init) tracing_init_once();
     return trace_out != NULL;
 }
 
@@ -88,23 +92,6 @@ static void alloc_tracef(char const* format, ...)
     vfprintf(trace_out, format, ap);
     va_end(ap);
     fprintf(trace_out, "\n");
-}
-
-void alloc_limit_set_no_limit(void)
-{
-    alloc_limit_state = NO_LIMIT;
-}
-
-void alloc_limit_set_total(size_t n)
-{
-    alloc_limit_state = LIMIT_TOTAL;
-    bytes_remaining = n;
-}
-
-void alloc_limit_set_peak(size_t n)
-{
-    alloc_limit_state = LIMIT_PEAK;
-    bytes_remaining = n;
 }
 
 static noreturn void
@@ -156,59 +143,27 @@ static bool get_limit_from_env(char const* const name,
     }
 }
 
-static void alloc_debug_init_once(void)
+static void alloc_limit_init_once(void)
 {
-    if (get_limit_from_env("RT211_ALLOC_LIMIT", &bytes_remaining))
-        alloc_limit_state = LIMIT_TOTAL;
-    else if (get_limit_from_env("RT211_HEAP_LIMIT", &bytes_remaining))
-        alloc_limit_state = LIMIT_PEAK;
+    size_t size;
+
+    if (get_limit_from_env("RT211_ALLOC_LIMIT", &size))
+        alloc_limit_set_total(size);
+
+    else if (get_limit_from_env("RT211_HEAP_LIMIT", &size))
+        alloc_limit_set_peak(size);
+
     else
-        alloc_limit_state = NO_LIMIT;
+        alloc_limit_set_no_limit();
 }
 
 #define ENSURE_ALLOC_DEBUG_INIT() \
-    if (alloc_limit_state == UNINITIALIZED) alloc_debug_init_once()
+    if (alloc_limit_state == UNINITIALIZED) alloc_limit_init_once()
 
-static void alloc_debug_gave_back(size_t size)
+static alloc_list_t find_alloc_record(void* p)
 {
-    if (alloc_limit_state == LIMIT_PEAK)
-        bytes_remaining += size;
-}
-
-static void adjust_record(alloc_list_t node, void* new_pointer,
-                          size_t old_size, size_t new_size)
-{
-    node->pointer = new_pointer;
-
-    if (new_size > old_size) {
-        bytes_remaining -= new_size - old_size;
-        node->size += new_size - old_size;
-    } else if (new_size < old_size) {
-        alloc_debug_gave_back(old_size - new_size);
-        node->size -= old_size - new_size;
-    }
-}
-
-static void remember_size(void* p, size_t n)
-{
-    alloc_list_t node = malloc(sizeof *node);
-    if (!node) {
-        perror("lib211_alloc");
-        exit(255);
-    }
-
-    node->pointer = p;
-    node->size = n;
-    node->next = allocation_list;
-    allocation_list = node;
-}
-
-static alloc_list_t* find_alloc_record(void* p)
-{
-    ENSURE_ALLOC_DEBUG_INIT();
-
-    for (alloc_list_t* cur = &allocation_list; *cur; cur = &(*cur)->next) {
-        if ((*cur)->pointer == p) {
+    for (alloc_list_t cur = allocation_list; cur; cur = cur->next) {
+        if (cur->pointer == p) {
             return cur;
         }
     }
@@ -233,10 +188,39 @@ static size_t lookup_and_forget_size(void* p)
     return size;
 }
 
-static bool alloc_debug_may_alloc(size_t n)
+static void forget_everything(void)
 {
-    ENSURE_ALLOC_DEBUG_INIT();
+    alloc_list_t list = allocation_list;
+    allocation_list = NULL;
 
+    while (list) {
+        alloc_list_t victim = list;
+        list = list->next;
+        free(victim);
+    }
+}
+
+static void remember_allocation(void* p, size_t n)
+{
+    alloc_list_t node = malloc(sizeof *node);
+    if (!node) {
+        perror("lib211_alloc");
+        exit(255);
+    }
+
+    node->pointer = p;
+    node->size = n;
+    node->next = allocation_list;
+    allocation_list = node;
+}
+
+static void forget_allocation(void* p)
+{
+    bytes_remaining += lookup_and_forget_size(p);
+}
+
+static bool alloc_limit_may_alloc(size_t n)
+{
     if ((alloc_limit_state == LIMIT_TOTAL || alloc_limit_state == LIMIT_PEAK)
             && n > bytes_remaining)
     {
@@ -251,114 +235,169 @@ static bool alloc_debug_may_alloc(size_t n)
     return true;
 }
 
-
-static void* alloc_debug_did_alloc(void* p, size_t n)
+static void* alloc_limit_did_alloc(void* p, size_t n)
 {
     if (!p) return NULL;
 
-    if (alloc_limit_state == LIMIT_TOTAL || alloc_limit_state == LIMIT_PEAK)
-        bytes_remaining -= n;
+    if (alloc_limit_state == LIMIT_PEAK)
+        remember_allocation(p, n);
 
-    remember_size(p, n);
+    if (alloc_limit_state == LIMIT_PEAK ||
+            alloc_limit_state == LIMIT_TOTAL)
+        bytes_remaining -= n;
 
     return p;
 }
 
-static void alloc_debug_will_free(void* p)
+static void alloc_limit_will_free(void* p)
 {
-    if (!p) return;
+    if (alloc_limit_state == LIMIT_PEAK)
+        forget_allocation(p);
+}
 
-    ENSURE_ALLOC_DEBUG_INIT();
 
-    size_t size = lookup_and_forget_size(p);
-    alloc_debug_gave_back(size);
+static void* quiet_calloc(size_t nmemb, size_t size)
+{
+    if (size <= SIZE_MAX / nmemb &&
+            alloc_limit_may_alloc(nmemb * size))
+        return alloc_limit_did_alloc(calloc(nmemb, size), nmemb * size);
+    else
+        return NULL;
+}
+
+static void* quiet_malloc(size_t size)
+{
+    if (alloc_limit_may_alloc(size))
+        return alloc_limit_did_alloc(malloc(size), size);
+    else
+        return NULL;
+}
+
+static void quiet_free(void *ptr)
+{
+    if (ptr) {
+        alloc_limit_will_free(ptr);
+        free(ptr);
+    }
+}
+
+static void* realloc_with_total_limit(void *ptr, size_t new_size)
+{
+    if (alloc_limit_may_alloc(new_size))
+        return alloc_limit_did_alloc(realloc(ptr, new_size), new_size);
+    else
+        return NULL;
+}
+
+static void* realloc_with_peak_limit(void *ptr, size_t new_size)
+{
+    alloc_list_t node = find_alloc_record(ptr);
+    size_t old_size   = node ? node->size : 0;
+
+    size_t needed = new_size > old_size ? new_size - old_size : 0;
+    if (!alloc_limit_may_alloc(needed))
+        return NULL;
+
+    ptr = realloc(ptr, new_size);
+    if (!ptr)
+        return NULL;
+
+    // Unsigned arithmetic, so this works even when new_size < old_size:
+    size_t change_in_size = new_size - old_size;
+
+    bytes_remaining -= change_in_size;
+    if (node) {
+        node->size  += change_in_size;
+    } else {
+        remember_allocation(ptr, new_size);
+    }
+
+    return ptr;
+}
+
+static void* quiet_realloc(void *ptr, size_t new_size)
+{
+    if (!ptr) return quiet_malloc(new_size);
+
+    switch (alloc_limit_state) {
+    case UNINITIALIZED:
+        return NULL;
+
+    case NO_LIMIT:
+        return realloc(ptr, new_size);
+
+    case LIMIT_TOTAL:
+        return realloc_with_total_limit(ptr, new_size);
+
+    case LIMIT_PEAK:
+        return realloc_with_peak_limit(ptr, new_size);
+    }
+}
+
+static void* quiet_reallocf(void *ptr, size_t new_size)
+{
+    void* result = quiet_realloc(ptr, new_size);
+    if (!result) quiet_free(ptr);
+    return result;
 }
 
 void* rt211_calloc(size_t nmemb, size_t size)
 {
+    ENSURE_ALLOC_DEBUG_INIT();
     alloc_tracef("calloc(%zu, %zu)", nmemb, size);
 
-    if (size <= SIZE_MAX / nmemb &&
-            alloc_debug_may_alloc(nmemb * size))
-        return alloc_debug_did_alloc(calloc(nmemb, size), nmemb * size);
-    else
-        return NULL;
-}
-
-static void* rt211_malloc_quiet(size_t size)
-{
-    if (alloc_debug_may_alloc(size))
-        return alloc_debug_did_alloc(malloc(size), size);
-    else
-        return NULL;
+    return quiet_calloc(nmemb, size);
 }
 
 void* rt211_malloc(size_t size)
 {
+    ENSURE_ALLOC_DEBUG_INIT();
     alloc_tracef("malloc(%zu)", size);
-    return rt211_malloc_quiet(size);
+
+    return quiet_malloc(size);
 }
 
 void rt211_free(void *ptr)
 {
+    ENSURE_ALLOC_DEBUG_INIT();
     alloc_tracef("free(%p)", ptr);
 
-    alloc_debug_will_free(ptr);
-    free(ptr);
+    quiet_free(ptr);
 }
 
-void* rt211_realloc(void *ptr, size_t new_size)
+void* rt211_realloc(void *ptr, size_t size)
 {
-    alloc_tracef("realloc(%p, %zu)", ptr, new_size);
+    ENSURE_ALLOC_DEBUG_INIT();
+    alloc_tracef("realloc(%p, %zu)", ptr, size);
 
-    if (!ptr) return rt211_malloc_quiet(new_size);
-
-    alloc_list_t* nodep = find_alloc_record(ptr);
-
-    // No record! What to do? Just be realloc.
-    if (!nodep) return realloc(ptr, new_size);
-
-    size_t old_size = (*nodep)->size;
-    size_t needed = new_size > old_size ? new_size - old_size : 0;
-    if (!alloc_debug_may_alloc(needed)) goto failure;
-
-    void* new_ptr = realloc(ptr, new_size);
-    if (!new_ptr) goto failure;
-
-    adjust_record(*nodep, new_ptr, old_size, new_size);
-    return new_ptr;
-
-failure:
-    return NULL;
+    return quiet_realloc(ptr, size);
 }
 
-void* rt211_reallocf(void *ptr, size_t new_size)
+void* rt211_reallocf(void *ptr, size_t size)
 {
-    alloc_tracef("reallocf(%p, %zu)", ptr, new_size);
+    ENSURE_ALLOC_DEBUG_INIT();
+    alloc_tracef("reallocf(%p, %zu)", ptr, size);
 
-    if (!ptr) return rt211_malloc_quiet(new_size);
+    return quiet_reallocf(ptr, size);
+}
 
-    alloc_list_t* nodep = find_alloc_record(ptr);
+void alloc_limit_set_no_limit(void)
+{
+    alloc_limit_state = NO_LIMIT;
+    forget_everything();
+    bytes_remaining = 0;
+}
 
-    // No record! What to do? Just be reallocf.
-    if (!nodep) {
-        void* new_ptr = realloc(ptr, new_size);
-        if (!new_ptr) free(ptr);
-        return new_ptr;
-    }
+void alloc_limit_set_total(size_t n)
+{
+    alloc_limit_state = LIMIT_TOTAL;
+    forget_everything();
+    bytes_remaining = n;
+}
 
-    size_t old_size = (*nodep)->size;
-    size_t needed = new_size > old_size ? new_size - old_size : 0;
-    if (!alloc_debug_may_alloc(needed)) goto failure;
-
-    void* new_ptr = realloc(ptr, new_size);
-    if (!new_ptr) goto failure;
-
-    adjust_record(*nodep, new_ptr, old_size, new_size);
-    return new_ptr;
-
-failure:
-    alloc_debug_will_free(ptr);
-    free(ptr);
-    return NULL;
+void alloc_limit_set_peak(size_t n)
+{
+    alloc_limit_state = LIMIT_PEAK;
+    forget_everything();
+    bytes_remaining = n;
 }
