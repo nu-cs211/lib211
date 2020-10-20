@@ -12,7 +12,7 @@ MANDIR     ?= $(DESTDIR)/man
 LIBDIR     ?= $(DESTDIR)/lib
 INCLUDEDIR ?= $(DESTDIR)/include
 
-DEPFLAGS    = -MT $@ -MMD -MP -MF build/$*.d
+DEPFLAGS    = -MT $@ -MMD -MP -MF $@.d
 
 COMPILE.c   = $(CC) $(DEPFLAGS) $(CFLAGS) $(CPPFLAGS) -c
 OUTPUT_OPT  = -o $@
@@ -38,10 +38,13 @@ test-install:
 	make -C test test-install PREFIX=$(DESTDIR)
 
 install: $(LIBS)
-	$(SUDO) install -d -m 755 $(INCLUDEDIR) $(LIBDIR) $(MANDIR)/man3
-	$(SUDO) install -m 755 $^         $(LIBDIR)
-	$(SUDO) install -m 644 include/*  $(INCLUDEDIR)
-	$(SUDO) install -m 644 man/man3/* $(MANDIR)/man3
+	$(SUDO) install -dm 755             $(LIBDIR)
+	$(SUDO) install -m 755  $^          $(LIBDIR)
+	$(SUDO) install -dm 755             $(INCLUDEDIR)
+	$(SUDO) install -m 644  include/*   $(INCLUDEDIR)
+	$(SUDO) install -dm 755             $(MANDIR)
+	$(SUDO) cp      -R      man/        $(MANDIR)
+	$(SUDO) chmod   -R   a+rX           $(MANDIR)
 
 $(SOLIB_SAN): $(OBJS_SAN)
 	cc -o $@ $^ $(LDFLAGS) $(SANFLAGS)
@@ -59,16 +62,17 @@ build/src/alloc_rt.o: DEBUGFLAG =
 build/src/alloc_rt-unsan.o: DEBUGFLAG =
 
 build/%.o: %.c
-build/%.o: %.c build/%.d
+build/%.o: %.c build/%.o.d
 	@$(MKOUTDIR)
 	$(COMPILE.c) $(OUTPUT_OPT) $< $(SANFLAGS)
 
 build/%-unsan.o: %.c
-build/%-unsan.o: %.c build/%.d
+build/%-unsan.o: %.c build/%-unsan.o.d
 	@$(MKOUTDIR)
 	$(COMPILE.c) $(OUTPUT_OPT) $<
 
-DEPFILES := $(SRCS:%.c=build/%.d)
+DEPFILES := $(SRCS:%.c=build/%.o.d) \
+            $(SRCS:%.c=build/%-unsan.o.d)
 $(DEPFILES):
 include $(wildcard $(DEPFILES))
 
