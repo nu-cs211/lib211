@@ -8,23 +8,25 @@ DEBUGFLAG   = -g
 
 TOV_PUB    ?= /usr/local
 DESTDIR    ?= $(TOV_PUB)
-OBJDIR     ?= build
+MANDIR     ?= $(DESTDIR)/man
+LIBDIR     ?= $(DESTDIR)/lib
+INCLUDEDIR ?= $(DESTDIR)/include
 
-DEPFLAGS    = -MT $@ -MMD -MP -MF $(OBJDIR)/$*.d
+DEPFLAGS    = -MT $@ -MMD -MP -MF build/$*.d
 
 COMPILE.c   = $(CC) $(DEPFLAGS) $(CFLAGS) $(CPPFLAGS) -c
 OUTPUT_OPT  = -o $@
 MKOUTDIR    = mkdir -p "$$(dirname "$@")"
 
-ALIB_SAN    = $(OBJDIR)/lib211.a
-ALIB_UNSAN  = $(OBJDIR)/lib211-unsan.a
-SOLIB_SAN   = $(OBJDIR)/lib211.so
-SOLIB_UNSAN = $(OBJDIR)/lib211-unsan.so
+ALIB_SAN    = build/lib211.a
+ALIB_UNSAN  = build/lib211-unsan.a
+SOLIB_SAN   = build/lib211.so
+SOLIB_UNSAN = build/lib211-unsan.so
 LIBS        = $(ALIB_SAN) $(ALIB_UNSAN) $(SOLIB_SAN) $(SOLIB_UNSAN)
 
 SRCS        = $(wildcard src/*.c)
-OBJS_SAN    = $(SRCS:%.c=$(OBJDIR)/%.o)
-OBJS_UNSAN  = $(SRCS:%.c=$(OBJDIR)/%-unsan.o)
+OBJS_SAN    = $(SRCS:%.c=build/%.o)
+OBJS_UNSAN  = $(SRCS:%.c=build/%-unsan.o)
 OBJS        = $(OBJS_SAN) $(OBJS_UNSAN)
 
 all: $(LIBS)
@@ -36,8 +38,10 @@ test-install:
 	make -C test test-install PREFIX=$(DESTDIR)
 
 install: $(LIBS)
-	$(SUDO) install -m 755 $^ $(DESTDIR)/lib
-	$(SUDO) install -m 644 include/* $(DESTDIR)/include
+	$(SUDO) install -d -m 755 $(INCLUDEDIR) $(LIBDIR) $(MANDIR)/man3
+	$(SUDO) install -m 755 $^         $(LIBDIR)
+	$(SUDO) install -m 644 include/*  $(INCLUDEDIR)
+	$(SUDO) install -m 644 man/man3/* $(MANDIR)/man3
 
 $(SOLIB_SAN): $(OBJS_SAN)
 	cc -o $@ $^ $(LDFLAGS) $(SANFLAGS)
@@ -51,25 +55,25 @@ $(ALIB_SAN): $(OBJS_SAN)
 $(ALIB_UNSAN): $(OBJS_UNSAN)
 	ar -crs $@ $^
 
-$(OBJDIR)/src/alloc_rt.o: DEBUGFLAG =
-$(OBJDIR)/src/alloc_rt-unsan.o: DEBUGFLAG =
+build/src/alloc_rt.o: DEBUGFLAG =
+build/src/alloc_rt-unsan.o: DEBUGFLAG =
 
-$(OBJDIR)/%.o: %.c
-$(OBJDIR)/%.o: %.c $(OBJDIR)/%.d
+build/%.o: %.c
+build/%.o: %.c build/%.d
 	@$(MKOUTDIR)
 	$(COMPILE.c) $(OUTPUT_OPT) $< $(SANFLAGS)
 
-$(OBJDIR)/%-unsan.o: %.c
-$(OBJDIR)/%-unsan.o: %.c $(OBJDIR)/%.d
+build/%-unsan.o: %.c
+build/%-unsan.o: %.c build/%.d
 	@$(MKOUTDIR)
 	$(COMPILE.c) $(OUTPUT_OPT) $<
 
-DEPFILES := $(SRCS:%.c=$(OBJDIR)/%.d)
+DEPFILES := $(SRCS:%.c=build/%.d)
 $(DEPFILES):
 include $(wildcard $(DEPFILES))
 
 clean:
-	$(RM) -R $(OBJDIR) $(DEPDIR)
+	$(RM) -R build $(DEPDIR)
 	make -C test clean
 
-.PHONY: clean test test-install install install-static
+.PHONY: clean test test-install install
