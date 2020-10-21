@@ -53,7 +53,7 @@ The
 .BR CHECK_STRING ()
 form does not compare the pointer values it is given, but the
 string objects they point to.
-It expects to receive valid pointers to 0-terminated \fBchar\fR arrays,
+It expects to receive valid pointers to 0-terminated \fIchar\fR arrays,
 which it compares using
 .BR strcmp (3).
 A test passes when the pointers are both non-NULL and point to equal
@@ -67,7 +67,7 @@ check a value that you expect to be NULL, use
 .SH "ERRORS"
 Each argument to the
 .BR CHECK_STRING ()
-form must evaluate either to a pointer to a 0-terminated \fBchar\fB
+form must evaluate either to a pointer to a 0-terminated \fIchar\fR
 array or to a NULL pointer. If given a non-null pointer that
 doesn\(aqt point to a valid C-style string, its behavior is undefined.
 .\"
