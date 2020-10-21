@@ -18,6 +18,13 @@
 #include <string.h>
 #include <unistd.h>
 
+#define EV_PEAK   "RT211_ALLOC_LIMIT_PEAK"
+#define EV_TOTAL  "RT211_ALLOC_LIMIT_TOTAL"
+
+// DEPRECATED:
+#define EV_PEAK2  "RT211_HEAP_LIMIT"
+#define EV_TOTAL2 "RT211_ALLOC_LIMIT"
+
 // A linked list mapping pointers to allocation sizes.
 struct alloc_record
 {
@@ -102,7 +109,7 @@ bad_env_var(char const* name, char const* value)
     exit(254);
 }
 
-static bool get_limit_from_env(char const* const name,
+static bool get_limit(char const* const name,
                                size_t* const out)
 {
     char *const original = getenv(name),
@@ -145,13 +152,13 @@ static bool get_limit_from_env(char const* const name,
 
 static void alloc_limit_init_once(void)
 {
-    size_t size;
+    size_t n;
 
-    if (get_limit_from_env("RT211_ALLOC_LIMIT", &size))
-        alloc_limit_set_total(size);
+    if (get_limit(EV_PEAK, &n) || get_limit(EV_PEAK2, &n))
+        alloc_limit_set_total(n);
 
-    else if (get_limit_from_env("RT211_HEAP_LIMIT", &size))
-        alloc_limit_set_peak(size);
+    else if (get_limit(EV_TOTAL, &n) || get_limit(EV_TOTAL2, &n))
+        alloc_limit_set_peak(n);
 
     else
         alloc_limit_set_no_limit();
