@@ -2,8 +2,8 @@
 #define LIB211_RAW_ALLOC
 #define LIB211_RAW_EXIT
 
-#include "lib211_alloc_limit.h"
-#include "lib211.h"
+#include "211_alloc_limit.h"
+#include "211.h"
 
 #include <ctype.h>
 #include <errno.h>

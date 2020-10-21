@@ -1,6 +1,6 @@
 #define _XOPEN_SOURCE 700
-#include <lib211.h>
-#include <lib211_alloc_limit.h>
+#include <211.h>
+#include <211_alloc_limit.h>
 
 #include <assert.h>
 #include <fcntl.h>
