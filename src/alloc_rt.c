@@ -327,9 +327,6 @@ static void* quiet_realloc(void *ptr, size_t new_size)
     if (!ptr) return quiet_malloc(new_size);
 
     switch (alloc_limit_state) {
-    case UNINITIALIZED:
-        return NULL;
-
     case NO_LIMIT:
         return realloc(ptr, new_size);
 
@@ -338,6 +335,9 @@ static void* quiet_realloc(void *ptr, size_t new_size)
 
     case LIMIT_PEAK:
         return realloc_with_peak_limit(ptr, new_size);
+
+    default:
+        return NULL;
     }
 }
 
