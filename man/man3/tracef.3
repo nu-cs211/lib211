@@ -5,20 +5,20 @@
 .  PD
 ..
 .\"
-.TH TRACEF 3 "October 20, 2020" "Jesse A. Tov"
+.TH TRACEF 3 "October 20, 2020" "lib211 2020.3" "CS 211"
 .\"
 .SH "NAME"
 .B tracef
 \- a simple tracing facility
 .\"
 .SH "SYNOPSIS"
+.nf
 .B "#define ENABLE_TRACEF"
-.my_br
 .B "#include <211.h>"
-.P
+.PP
 .I void
-.my_br
-\fBtracef\fR(\fIconst char * format\fR, \fI...\fR);
+\fBtracef\fR( \fIconst char * format\fR, \fI...\fR );
+.fi
 .\"
 .SH "DESCRIPTION"
 This macro provides a simple tracing facility that is easily
@@ -44,29 +44,26 @@ the \fB#include\fR; to disable it, remove or comment out the
 \fB#define\fR.
 .PP
 Essentially, this means you can do \[lq]printf\[rq]\-style debugging to
-see what's going on, and then disable the output without having to
+see what\(aqs going on, and then disable the output without having to
 remove the all the calls to
 .BR tracef ().
 .\"
 .SH "EXAMPLE"
+.PP
+.nf
 // Comment out next line to suppress output:
-.my_br
 .B "#define ENABLE_TRACEF"
-.my_br
 .B "#include <211.h>"
 .PP
-\fIint\fR main()
-.my_br
+\fIint\fR main( \fIvoid\fR )
 {
-.my_br
     \fIint\fR x = 3, y = 4;
-.my_br
     \fBtracef\fR("%d + %d == %d\\n", x, y, x + y)\;
-.my_br
 }
+.fi
 .\"
 .SH "AUTHOR"
-\fIjesse@cs\.northwestern\.edu\fR
+Jesse Tov <\fIjesse@cs\.northwestern\.edu\fR>
 .\"
 .SH "SEE ALSO"
 .BR fprintf (3),
