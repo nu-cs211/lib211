@@ -14,7 +14,7 @@
 .SH "SYNOPSIS"
 .B "#define ENABLE_TRACEF"
 .my_br
-.B "#include <211.h>
+.B "#include <211.h>"
 .P
 .I void
 .my_br
@@ -38,7 +38,7 @@ not
 .BR tracef ()
 only produces output if the C preprocessor macro
 .B ENABLE_TRACEF
-is \fB#define\fRd before the \fI"lib211.h"\fR header is
+is \fB#define\fRd before the \fI<211.h>\fR header is
 \fB#include\fRd. Thus, to turn on tracing, put the \fB#define\fR above
 the \fB#include\fR; to disable it, remove or comment out the
 \fB#define\fR.
@@ -53,7 +53,7 @@ remove the all the calls to
 .my_br
 .B "#define ENABLE_TRACEF"
 .my_br
-.B "#include ""lib211.h""
+.B "#include <211.h>"
 .PP
 \fIint\fR main()
 .my_br
