@@ -29,14 +29,15 @@ test-install: $(SYS_EXES)
 	    echo; \
 	done
 
-build/%: build/%.o
-	cc -o $@ $^ $(LDFLAGS)
+build/alloc_limit_test.o build/alloc_record.o: alloc_record.h
 
-build/%.system: build/%.o
+build/alloc_limit_test build/alloc_limit_test.system: build/alloc_record.o
+
+build/% build/%.system: build/%.o
 	cc -o $@ $^ $(LDFLAGS)
 
 build/%.o: %.c | build
-	cc -c -o $@ $^ $(CPPFLAGS) $(CFLAGS)
+	cc -c -o $@ $< $(CPPFLAGS) $(CFLAGS)
 
 build:
 	mkdir -p build

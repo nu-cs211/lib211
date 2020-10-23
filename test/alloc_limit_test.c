@@ -1,4 +1,7 @@
 #define _XOPEN_SOURCE 700
+
+#include "alloc_record.h"
+
 #include <211.h>
 #include <211_alloc_limit.h>
 
@@ -14,18 +17,20 @@
 #include <sys/wait.h>
 
 
-#define NORMAL  "\33[0m"
-#define RED     "\33[0;31m"
-#define GREEN   "\33[0;32m"
-#define RVRED   "\33[0;41;37m"
+#define ARRAY_LEN(A)   (sizeof(A) / sizeof((A)[0]))
 
-static size_t stress_count  = 10000;
-static size_t stress_chunk  = 10000;
+static size_t const stress_count  = 10000,
+                    stress_chunk  = 10000;
 
 static void test_no_init(void)
 {
-    for (char i = 0; i < 20; ++i)
-        assert( malloc(1 << i) );
+    rec_t r[20];
+    rec_init(r, 20);
+
+    for (size_t i = 1; i < ARRAY_LEN(r); ++i)
+        malloc_success(r, 1 << i);
+
+    free_all(r);
 }
 
 static void test_no_limit(void)
@@ -36,32 +41,39 @@ static void test_no_limit(void)
 
 static void test_limit_total(void)
 {
+    rec_t r[10];
+    rec_init(r, 10);
+
     alloc_limit_set_total(10);
 
-    assert( malloc(4) );
-    assert( ! malloc(8) );
-    assert( malloc(4) );
-    assert( ! malloc(4) );
-    assert( malloc(1) );
-    assert( ! malloc(2) );
+    malloc_success(r, 4);
+    malloc_failure(r, 8);
+    malloc_success(r, 4);
+    malloc_success(r, 1);
+    malloc_failure(r, 2);
+    free_all(r);
 }
 
 static void test_limit_peak(void)
 {
+    rec_t r[10];
+    rec_init(r, 10);
+
     alloc_limit_set_peak(10);
 
-    void *p1, *p2, *p3;
+    malloc_success(r, 4);
+    malloc_failure(r, 8);
+    malloc_success(r, 4);
+    malloc_failure(r, 4);
+    malloc_success(r, 1);
+    malloc_failure(r, 2);
 
-    assert( (p1 = malloc(4)) );
-    assert( ! malloc(8) );
-    assert( (p2 = malloc(4)) );
-    assert( ! malloc(4) );
-    assert( (p3 = malloc(1)) );
-    assert( ! malloc(2) );
+    free_one(r, 4);
 
-    free(p1);
-    assert( (p1 = malloc(5)) );
-    assert( ! malloc(1) );
+    malloc_success(r, 5);
+    malloc_failure(r, 1);
+
+    free_all(r);
 }
 
 static void test_reset_limit(void)
@@ -74,32 +86,18 @@ static void test_reset_limit(void)
     test_limit_peak();
 }
 
-struct allocation
-{
-    void* ptr;
-    size_t size;
-};
-
-static void swap(struct allocation a[], size_t i, size_t j)
-{
-    struct allocation t;
-
-    t    = a[i];
-    a[i] = a[j];
-    a[j] = t;
-}
-
 static void test_env_var_helper(
-        const char* alloc_limit,
-        const char* heap_limit,
-        size_t size,
-        bool is_heap_limit)
+        const char* total_limit,
+        const char* peak_limit,
+        size_t size)
 {
-    if (alloc_limit)
-        setenv("RT211_ALLOC_LIMIT", alloc_limit, 1);
+    bool is_peak_limit = peak_limit != NULL && total_limit == NULL;
 
-    if (heap_limit)
-        setenv("RT211_HEAP_LIMIT", heap_limit, 1);
+    if (peak_limit)
+        setenv("RT211_ALLOC_LIMIT_PEAK", peak_limit, 1);
+
+    if (total_limit)
+        setenv("RT211_ALLOC_LIMIT_TOTAL", total_limit, 1);
 
     void* p;
 
@@ -107,128 +105,83 @@ static void test_env_var_helper(
     assert( !malloc(1) );
 
     free(p);
-    assert( (bool)malloc(size) == is_heap_limit );
+    assert( (bool)(p = malloc(size)) == is_peak_limit );
+    free(p);
 }
 
-static void test_env_limit_alloc_bytes(void)
+static void test_env_limit_total_bytes(void)
 {
-    test_env_var_helper("128", NULL, 128, false);
+    test_env_var_helper("128", NULL, 128);
 }
 
-static void test_env_limit_alloc_megabytes(void)
+static void test_env_limit_total_megabytes(void)
 {
-    test_env_var_helper("16 MB", NULL, 16 << 20, false);
+    test_env_var_helper("16 MB", NULL, 16 << 20);
 }
 
-static void test_env_limit_heap_kilobytes(void)
+static void test_env_limit_peak_kilobytes(void)
 {
-    test_env_var_helper(NULL, "128k", 128 << 10, true);
+    test_env_var_helper(NULL, "128k", 128 << 10);
 }
 
 static void test_env_limit_both(void)
 {
-    test_env_var_helper("16b", "16kb", 16, false);
+    test_env_var_helper("16b", "16kb", 16);
 }
 
-static void test_stressful(void) {
-    struct allocation allocations[stress_count];
+static void test_stressful(void)
+{
+    size_t sizes[stress_count];
     size_t total = 0;
-    void* p;
 
     srand(time(NULL));
 
-    for (size_t i = 0; i < stress_count; ++i)
-        total += allocations[i].size = rand() % stress_chunk + 1;
+    for (size_t i = 0; i < stress_count; ++i) {
+        total += sizes[i] = 1 + rand() % stress_chunk;
+    }
 
     alloc_limit_set_peak(total);
 
-    for (size_t i = 0; i < stress_count; ++i)
-        assert( (allocations[i].ptr = malloc(allocations[i].size)) );
+    rec_t r[stress_count + 1];
+    rec_init(r, stress_count + 1);
 
-    assert( ! malloc(1) );
+    for (size_t i = 0; i < stress_count; ++i) {
+        malloc_success(r, sizes[i]);
+    }
 
-    for (size_t i = stress_count - 1; i > 0; --i)
-        swap(allocations, i, rand() % (i + 1));
+    malloc_failure(r, 1);
 
-    for (size_t i = 1; i < stress_count; ++i)
-        free(allocations[i].ptr);
+    for (size_t i = stress_count - 1; i > 0; --i) {
+        size_t j    = rand() % (i + 1);
+        size_t temp = sizes[i];
+        sizes[i]    = sizes[j];
+        sizes[j]    = temp;
+    }
 
-    assert( ! malloc(total - allocations[0].size + 1) );
-    assert( (p = malloc(total - allocations[0].size)) );
+    for (size_t i = 1; i < stress_count; ++i) {
+        free_one(r, sizes[i]);
+    }
 
-    free(p);
-    free(allocations[0].ptr);
+    malloc_failure(r, total - sizes[0] + 1);
+    malloc_success(r, total - sizes[0]);
 
-    assert( malloc(total) );
-    assert( ! malloc(total) );
+    free_all(r);
+
+    malloc_success(r, total);
+    malloc_failure(r, total);
+
+    free_all(r);
 }
-
-static int attempted_tests = 0;
-static int passed_tests    = 0;
-
-void run_test(char const* name, void (*test_fn)(void))
-{
-    ++attempted_tests;
-
-    pid_t pid = fork();
-
-    if (pid < 0) {
-        perror(name);
-        exit(1);
-    }
-
-    if (pid == 0) {
-        eprintf("%s... ", name);
-        fflush(stdout);
-
-        int fd = open("/dev/null", O_RDONLY);
-        if (fd >= 0) {
-            dup2(fd, 1);
-            dup2(fd, 2);
-        }
-
-        test_fn();
-        exit(0);
-    }
-
-    int status;
-
-    if (wait(&status) < 0) {
-        perror(name);
-        exit(2);
-    }
-
-    if (WIFEXITED(status)) {
-        if (WEXITSTATUS(status) == 0) {
-            eprintf(GREEN "passed" NORMAL "\n");
-            ++passed_tests;
-        } else {
-            eprintf(RVRED "unexpected exit %d" NORMAL "\n",
-                    WEXITSTATUS(status));
-        }
-    } else if (WIFSIGNALED(status)) {
-        if (WTERMSIG(status) == SIGABRT) {
-            eprintf(RED "failed" NORMAL "\n");
-        } else {
-            eprintf(RED "crashed from signal %d" NORMAL "\n",
-                    WTERMSIG(status));
-        }
-    }
-}
-
-#define TEST(N)  run_test(#N, &N)
 
 int main(void)
 {
-    TEST(test_no_init);
-    TEST(test_limit_total);
-    TEST(test_limit_peak);
-    TEST(test_reset_limit);
-    TEST(test_stressful);
-    TEST(test_env_limit_alloc_bytes);
-    TEST(test_env_limit_alloc_megabytes);
-    TEST(test_env_limit_heap_kilobytes);
-    TEST(test_env_limit_both);
-
-    return attempted_tests - passed_tests;
+    RUN_TEST( test_no_init );
+    RUN_TEST( test_limit_total );
+    RUN_TEST( test_limit_peak );
+    RUN_TEST( test_reset_limit );
+    RUN_TEST( test_stressful );
+    RUN_TEST( test_env_limit_total_bytes );
+    RUN_TEST( test_env_limit_total_megabytes );
+    RUN_TEST( test_env_limit_peak_kilobytes );
+    RUN_TEST( test_env_limit_both );
 }

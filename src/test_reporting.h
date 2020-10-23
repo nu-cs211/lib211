@@ -6,6 +6,12 @@ bool rt211_test_log_check(
         int line);
 
 void rt211_test_log_error(
-        char const* context,
-        char const* file,
-        int line);
+        char const* const file,
+        int         const line,
+        char const* const context,
+        char const* const message);
+
+void rt211_test_log_perror(
+        char const* const file,
+        int         const line,
+        char const* const context);

@@ -65,50 +65,43 @@ static void test_env_exit_code(const char* env1, int expect_status)
         NULL,
     };
 
-    CHECK_EXEC(argv, "", "", ANY_OUTPUT, expect_status);
+    CHECK_EXEC(argv, "", ANY_OUTPUT, ANY_OUTPUT, expect_status);
 }
 
-static void test_env_alloc_limit_50_B(void)
+static void test_env_alloc_limit_total_50_B(void)
 {
-    test_env_exit_code("RT211_ALLOC_LIMIT=50", 2);
+    test_env_exit_code("RT211_ALLOC_LIMIT_TOTAL=50", 2);
 }
 
-static void test_env_alloc_limit_50_MB(void)
+static void test_env_alloc_limit_total_50_MB(void)
 {
-    test_env_exit_code("RT211_ALLOC_LIMIT=50M", 1);
+    test_env_exit_code("RT211_ALLOC_LIMIT_TOTAL=50M", 1);
 }
 
-static void test_env_heap_limit_50_MB(void)
+static void test_env_alloc_limit_peak_50_MB(void)
 {
-    test_env_exit_code("RT211_HEAP_LIMIT=50M", 0);
+    test_env_exit_code("RT211_ALLOC_LIMIT_PEAK=50M", 0);
 }
 
-static void test_env_heap_limit_50_GB(void)
+static void test_env_alloc_limit_peak_50_GB(void)
 {
-    test_env_exit_code("RT211_HEAP_LIMIT=50G", 0);
-}
-
-static void run_test(char const* name, void (*test_fn)(void))
-{
-    fprintf(stderr, "%s... ", name);
-    test_fn();
-    fprintf(stderr, " done\n");
+    test_env_exit_code("RT211_ALLOC_LIMIT_PEAK=50G", 0);
 }
 
 int main(void)
 {
-    RUN_TEST(test_true_cmd);
-    RUN_TEST(test_false_cmd);
-    RUN_TEST(test_exit_5_cmd);
-    RUN_TEST(test_echo_out_cmd);
-    RUN_TEST(test_echo_err_cmd);
-    RUN_TEST(test_echo_both_cmd);
+    RUN_TEST( test_true_cmd );
+    RUN_TEST( test_false_cmd );
+    RUN_TEST( test_exit_5_cmd );
+    RUN_TEST( test_echo_out_cmd );
+    RUN_TEST( test_echo_err_cmd );
+    RUN_TEST( test_echo_both_cmd );
 
-    RUN_TEST(test_grep_exec);
-    RUN_TEST(test_cat_exec);
+    RUN_TEST( test_grep_exec );
+    RUN_TEST( test_cat_exec );
 
-    RUN_TEST(test_env_alloc_limit_50_B);
-    RUN_TEST(test_env_alloc_limit_50_MB);
-    RUN_TEST(test_env_heap_limit_50_MB);
-    RUN_TEST(test_env_heap_limit_50_GB);
+    RUN_TEST( test_env_alloc_limit_total_50_B );
+    RUN_TEST( test_env_alloc_limit_total_50_MB );
+    RUN_TEST( test_env_alloc_limit_peak_50_MB );
+    RUN_TEST( test_env_alloc_limit_peak_50_GB );
 }
