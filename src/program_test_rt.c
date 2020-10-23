@@ -186,7 +186,7 @@ static void do_check_exec(
         int         const code)
 {
     bool passed = false;
-    fd_set_t fd = {-1};
+    fd_set_t fd = {{-1}};
 
     FOR_ARRAY (i, fd.a) {
         char tempfile[sizeof temp_template];
