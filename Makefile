@@ -43,7 +43,7 @@ install: $(LIBS)
 	$(SUDO) install -dm 755 $(INCLUDEDIR)
 	$(SUDO) install -m 644 include/* $(INCLUDEDIR)
 	$(SUDO) install -dm 755 $(MANDIR)
-	$(SUDO) tar -c man | tar --strip-components=1 -xC $(MANDIR)
+	tar -c man | $(SUDO) tar --strip-components=1 -xC $(MANDIR)
 	$(SUDO) chmod -R a+rX $(MANDIR)
 
 $(SOLIB_SAN): $(OBJS_SAN)
