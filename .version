@@ -1,0 +1,4 @@
+# vi: se ft=sh:
+major_version=2020
+minor_version=3
+patch_version=6

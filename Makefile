@@ -14,6 +14,7 @@ INCLUDEDIR ?= $(DESTDIR)/include
 
 DEPFLAGS    = -MT $@ -MMD -MP -MF $@.d
 
+PREPROCESS  = scripts/preprocess.sh
 COMPILE.c   = $(CC) $(DEPFLAGS) $(CFLAGS) $(CPPFLAGS) -c
 OUTPUT_OPT  = -o $@
 MKOUTDIR    = mkdir -p "$$(dirname "$@")"
@@ -37,13 +38,14 @@ test: $(LIBS)
 test-install:
 	make -C test test-install PREFIX=$(DESTDIR)
 
-install: $(LIBS)
+install: preprocess $(LIBS)
 	$(SUDO) install -dm 755 $(LIBDIR)
-	$(SUDO) install -m 755 $^ $(LIBDIR)
+	$(SUDO) install -m 755 $(LIBS) $(LIBDIR)
 	$(SUDO) install -dm 755 $(INCLUDEDIR)
 	$(SUDO) install -m 644 include/* $(INCLUDEDIR)
 	$(SUDO) install -dm 755 $(MANDIR)
-	tar -c man | $(SUDO) tar --strip-components=1 -xC $(MANDIR)
+	tar --exclude='*.in' -c man | \
+	    $(SUDO) tar --strip-components=1 -xC $(MANDIR)
 	$(SUDO) chmod -R a+rX $(MANDIR)
 
 $(SOLIB_SAN): $(OBJS_SAN)
@@ -71,6 +73,12 @@ build/%-unsan.o: %.c build/%-unsan.o.d
 	@$(MKOUTDIR)
 	$(COMPILE.c) $(OUTPUT_OPT) $<
 
+preprocess:
+	$(PREPROCESS)
+
+%.h: %.h.in .version
+	$(PREPROCESS) $<
+
 DEPFILES := $(SRCS:%.c=build/%.o.d) \
             $(SRCS:%.c=build/%-unsan.o.d)
 $(DEPFILES):
@@ -80,4 +88,4 @@ clean:
 	$(RM) -R build $(DEPDIR)
 	make -C test clean
 
-.PHONY: clean test test-install install
+.PHONY: clean test test-install install preprocess

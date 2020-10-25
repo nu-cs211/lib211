@@ -1,5 +1,5 @@
 .\" Manual page for 211.h
-.TH READ_LINE 3 "January 18, 2019" "lib211 2020.3" "CS 211"
+.TH READ_LINE 3 "{{date}}" "lib211 {{version}}" "CS 211"
 .\"
 .SH NAME
 .BR read_line ", " fread_line ", " prompt_line

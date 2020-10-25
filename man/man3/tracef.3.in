@@ -1,5 +1,5 @@
 .\" Manual page for 211.h
-.TH TRACEF 3 "October 20, 2020" "lib211 2020.3" "CS 211"
+.TH TRACEF 3 "{{date}}" "lib211 {{version}}" "CS 211"
 .\"
 .SH NAME
 .B tracef

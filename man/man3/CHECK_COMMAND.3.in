@@ -1,5 +1,5 @@
 .\" Manual page for 211.h
-.TH CHECK_COMMAND 3 "September 29, 2020" "lib211 2020.3" "CS 211"
+.TH CHECK_COMMAND 3 "{{date}}" "lib211 {{version}}" "CS 211"
 .\"
 .SH NAME
 .BR CHECK_COMMAND ", " CHECK_EXEC

@@ -1,5 +1,5 @@
 .\" Manual page for 211.h
-.TH CHECK 3 "January 29, 2020" "lib211 2020.3" "CS 211"
+.TH CHECK 3 "{{date}}" "lib211 {{version}}" "CS 211"
 .\"
 .SH NAME
 .BR CHECK ", " CHECK_CHAR ", " CHECK_INT ", "
