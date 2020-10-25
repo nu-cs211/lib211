@@ -1,20 +1,14 @@
-.\" Manual page for lib211.h
-.de my_br
-.  PD 0
-.  PP
-.  PD
-..
+.\" Manual page for 211.h
+.TH CHECK_COMMAND 3 "September 29, 2020" "lib211 2020.3" "CS 211"
 .\"
-.TH CHECK_COMMAND 3 "September 29, 2020" "Jesse A. Tov"
-.\"
-.SH "NAME"
+.SH NAME
 .BR CHECK_COMMAND ", " CHECK_EXEC
 \- simple whole-program testing
 .\"
-.SH "SYNOPSIS"
-.B "#include <lib211.h>"
+.SH SYNOPSIS
+.nf
+.B "#include <211.h>"
 .P
-.my_br
 \fBvoid CHECK_COMMAND\fR(
         \fBconst char *\fIcommand\fR,
         \fBconst char *\fIactual_input\fR,
@@ -22,7 +16,6 @@
         \fBconst char *\fIexpected_error\fR,
         \fBint\fR         \fIexpected_exit_code\fR);
 .P
-.my_br
 \fBvoid CHECK_EXEC\fR(
         \fBconst char *\fIargv\fR[],
         \fBconst char *\fIactual_input\fR,
@@ -30,13 +23,12 @@
         \fBconst char *\fIexpected_error\fR,
         \fBint\fR         \fIexpected_exit_code\fR);
 .P
-.my_br
 \fBextern const char *\fRANY_OUTPUT;
 .P
-.my_br
 \fBextern int\fR ANY_EXIT, ANY_EXIT_ERROR;
+.fi
 .\"
-.SH "DESCRIPTION"
+.SH DESCRIPTION
 These macros are for testing whole programs from outside, rather than
 functions within the same program. For unit testing of functions,
 see \fBCHECK\fR(3).
@@ -69,36 +61,46 @@ constant \fIANY_EXIT\fR to say that any status code
 is okay, or the constant \fIANY_EXIT_ERROR\fR to say that
 this check should pass with any non-zero exit code.
 .\"
-.SH "EXAMPLE"
+.SH EXAMPLE
 Suppose there is a program named \fIoverlapped\fR in the
 current directory that should have the following behavior.
 If sent the three lines
+.RS 4
 .P
-   0 0 10
-   5 0 10
-   100 0 10
+.nf
+0 0 10
+5 0 10
+100 0 10
+.fi
+.RE
 .P
 to its standard input, then it should print the output
+.RS 4
 .P
-    overlapped
-    not overlapped
+.nf
+overlapped
+not overlapped
+.fi
+.RE
 .P
 to its standard output, and then exit with status 0. You could verify
 this behavior with a check like this:
 .RS 4
-.PP
+.P
+.nf
 \fBCHECK_COMMAND\fR("./overlapped",
               "0 0 10\fI\\n\fR5 0 10\fI\\n\fR100 0 10\fI\\n\fR",
               "overlapped\fI\\n\fRnot overlapped\fI\\n\fR",
               "",
               \fB0\fR);
+.fi
 .RE
 .\"
-.SH "BUGS"
+.SH BUGS
 Probably many, but none yet known.
 .\"
-.SH "AUTHOR"
-\fIjesse@cs\.northwestern\.edu\fR
+.SH AUTHOR
+Jesse Tov <\fIjesse@cs\.northwestern\.edu\fR>
 .\"
 .SH "SEE ALSO"
 .BR CHECK (3),

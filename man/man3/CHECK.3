@@ -1,13 +1,13 @@
 .\" Manual page for 211.h
 .TH CHECK 3 "January 29, 2020" "lib211 2020.3" "CS 211"
 .\"
-.SH "NAME"
+.SH NAME
 .BR CHECK ", " CHECK_CHAR ", " CHECK_INT ", "
 .BR CHECK_UINT ", " CHECK_SIZE ", " CHECK_DOUBLE ", "
 .BR CHECK_STRING ", " CHECK_POINTER
 \- simple unit testing
 .\"
-.SH "SYNOPSIS"
+.SH SYNOPSIS
 .nf
 .B "#include <211.h>"
 .P
@@ -26,7 +26,7 @@
 \fBCHECK_POINTER\fR( \fIptr_expression\fR, \fIptr_expression\fR );
 .fi
 .\"
-.SH "DESCRIPTION"
+.SH DESCRIPTION
 Each of these macros asserts the truth of some condition, registering
 a passed test if the condition is true, or a failed test if the
 condition is false. They also register an exit handler, in order to
@@ -45,8 +45,10 @@ comparison test fails, it prints the two values that differed
 unexpectedly. For example, to test a factorial function \fIfact\fR,
 you could write
 .RS 4
-.PP
+.nf
+.P
 \fBCHECK_UINT\fR( fact(5), 120 );
+.fi
 .RE
 .P
 The
@@ -64,14 +66,14 @@ dereferencing them; however, NULLs are considered a failed test. To
 check a value that you expect to be NULL, use
 .BR CHECK_POINTER ().
 .\"
-.SH "ERRORS"
+.SH ERRORS
 Each argument to the
 .BR CHECK_STRING ()
 form must evaluate either to a pointer to a 0-terminated \fIchar\fR
 array or to a NULL pointer. If given a non-null pointer that
 doesn\(aqt point to a valid C-style string, its behavior is undefined.
 .\"
-.SH "BUGS"
+.SH BUGS
 The
 .BR CHECK_INT ()
 and
@@ -79,9 +81,10 @@ and
 macros also work on types \fBlong\fR and
 \fBunsigned long\fR.
 .\"
-.SH "AUTHOR"
+.SH AUTHOR
 Jesse Tov <\fIjesse@cs\.northwestern\.edu\fR>
 .\"
 .SH "SEE ALSO"
+.BR CHECK (3),
 .BR assert (3),
 .BR strcmp (3)
