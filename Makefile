@@ -23,7 +23,7 @@ ALIB_SAN    = build/lib211.a
 ALIB_UNSAN  = build/lib211-unsan.a
 SOLIB_SAN   = build/lib211.so
 SOLIB_UNSAN = build/lib211-unsan.so
-LIBS        = $(ALIB_SAN) $(ALIB_UNSAN) $(SOLIB_SAN) $(SOLIB_UNSAN)
+LIBS        = $(ALIB_UNSAN) $(SOLIB_SAN) $(SOLIB_UNSAN)
 
 SRCS        = $(wildcard src/*.c)
 OBJS_SAN    = $(SRCS:%.c=build/%.o)
