@@ -128,10 +128,10 @@ static void init_malloc_shim(void)
     if ((last_error = dlerror()) || !libc)
         goto error;
 
-    sys_calloc  = dlsym(libc, "calloc");
-    sys_free    = dlsym(libc, "free");
-    sys_malloc  = dlsym(libc, "malloc");
-    sys_realloc = dlsym(libc, "realloc");
+    *(void**)&sys_calloc  = dlsym(libc, "calloc");
+    *(void**)&sys_free    = dlsym(libc, "free");
+    *(void**)&sys_malloc  = dlsym(libc, "malloc");
+    *(void**)&sys_realloc = dlsym(libc, "realloc");
     if ((last_error = dlerror()) ||
             !sys_calloc || !sys_free || !sys_malloc || !sys_realloc)
         goto error;
