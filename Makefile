@@ -1,7 +1,7 @@
 # For building lib211.
 
 CPPFLAGS    = -Iinclude
-CFLAGS      = $(DEBUGFLAG) -O2 -fpic -std=c11 -pedantic-errors -Wall
+CFLAGS      = $(DEBUGFLAG) -O2 -fpic -std=c11 -pedantic -Wall
 LDFLAGS     = -shared
 SANFLAGS    = -fsanitize=address,undefined
 DEBUGFLAG   = -g
