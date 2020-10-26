@@ -2,9 +2,9 @@
 .TH 211_ALLOC_LIMIT 3 "{{date}}" "lib211 {{version}}" "CS 211"
 .\"
 .SH NAME
-.BR alloc_limit_set_no_limit ", "
 .BR alloc_limit_set_peak ", "
-.BR alloc_limit_set_total
+.BR alloc_limit_set_total ", "
+.BR alloc_limit_set_no_limit
 \- simulated out-of-memory errors
 .\"
 .SH SYNOPSIS
