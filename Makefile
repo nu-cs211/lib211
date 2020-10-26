@@ -3,8 +3,7 @@
 CPPFLAGS    = -Iinclude
 CFLAGS      = $(DEBUGFLAG) -O2 -fpic -std=c11 -Wall
 LDFLAGS     = -shared -ldl
-SANFLAGS    = -fsanitize=address,undefined \
-              -static-libasan -static-libubsan
+SANFLAGS    = -fsanitize=address,undefined
 DEBUGFLAG   = -g
 
 TOV_PUB    ?= /usr/local

@@ -1,7 +1,6 @@
 #define LIB211_RAW_ALLOC
 #define LIB211_RAW_EXIT
 #define _XOPEN_SOURCE 700
-#define _GNU_SOURCE
 
 #include "211_alloc_limit.h"
 #include "211.h"
@@ -97,54 +96,82 @@ static void *(*cur_calloc)(size_t count, size_t size);
 static void  (*cur_free)(void *ptr);
 static void *(*cur_malloc)(size_t size);
 static void *(*cur_realloc)(void *ptr, size_t size);
-static void *(*cur_reallocf)(void *ptr, size_t size);
+/* static void *(*cur_reallocf)(void *ptr, size_t size); */
 
 static bool malloc_shim_is_init = false;
+
+#ifndef LIBC_NAME
+#   if __APPLE__
+#       define LIBC_NAME "libc.dylib"
+#   else
+#       define LIBC_NAME "libc.so"
+#   endif
+#endif
+
+static void use_system_allocator(void)
+{
+    cur_calloc  = sys_calloc;
+    cur_free    = sys_free;
+    cur_malloc  = sys_malloc;
+    cur_realloc = sys_realloc;
+}
 
 static void init_malloc_shim(void)
 {
     if (malloc_shim_is_init) return;
-
-    sys_malloc = dlsym(RTLD_NEXT, "malloc");
-            // RTLD_LAZY|RTLD_LOCAL|RTLD_NODELETE);
-    if (!sys_malloc) {
-        perror("dlsym");
-        exit(253);
-    }
-
-    fprintf(stderr, "dlsym(malloc): %16p\n", sys_malloc);
-    fprintf(stderr, "malloc:        %16p\n", &malloc);
-
-    fprintf(stderr, "dlsym(malloc)(11): %16p\n", sys_malloc(11));
-    fprintf(stderr, "malloc(11):        %16p\n", malloc(11));
-
     malloc_shim_is_init = true;
 
-    _exit(0);
+    char* last_error;
+
+    dlerror();
+    void* libc  = dlopen(LIBC_NAME, RTLD_LAZY|RTLD_LOCAL);
+    if ((last_error = dlerror()) || !libc)
+        goto error;
+
+    sys_calloc  = dlsym(libc, "calloc");
+    sys_free    = dlsym(libc, "free");
+    sys_malloc  = dlsym(libc, "malloc");
+    sys_realloc = dlsym(libc, "realloc");
+    if ((last_error = dlerror()) ||
+            !sys_calloc || !sys_free || !sys_malloc || !sys_realloc)
+        goto error;
+
+    use_system_allocator();
+
+    return;
+
+error:
+    fprintf(stderr, "dlopen: error: %s\n",
+            last_error ? last_error : "unknown");
+    exit(253);
 }
 
-/* void *calloc(size_t count, size_t size) */
-/* { */
-/* } */
+void *calloc(size_t count, size_t size)
+{
+    init_malloc_shim();
+    return cur_calloc(count, size);
+}
 
-/* void  free(void *ptr) */
-/* { */
-/* } */
+void free(void *ptr)
+{
+    init_malloc_shim();
+    fprintf(stderr, "free(%p);\n", ptr);
+    return cur_free(ptr);
+}
 
 void *malloc(size_t size)
 {
-    fprintf(stderr, "\tmy_malloc(%zu);\n", size);
-    return calloc(size, 1);
+    init_malloc_shim();
+    fprintf(stderr, "malloc(%zu);\n", size);
+    return cur_malloc(size);
 }
 
-/* void *realloc(void *ptr, size_t size) */
-/* { */
-/* } */
-
-/* void *reallocf(void *ptr, size_t size) */
-/* { */
-/* } */
-
+void *realloc(void *ptr, size_t size)
+{
+    init_malloc_shim();
+    fprintf(stderr, "realloc(%p, %zu);\n", ptr, size);
+    return cur_realloc(ptr, size);
+}
 
 ///
 /// ALLOCATION INSTRUMENTATION
