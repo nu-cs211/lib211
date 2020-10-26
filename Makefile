@@ -1,9 +1,10 @@
 # For building lib211.
 
 CPPFLAGS    = -Iinclude
-CFLAGS      = $(DEBUGFLAG) -O2 -fpic -std=c11 -pedantic-errors -Wall
-LDFLAGS     = -shared
-SANFLAGS    = -fsanitize=address,undefined
+CFLAGS      = $(DEBUGFLAG) -O2 -fpic -std=c11 -Wall
+LDFLAGS     = -shared -ldl
+SANFLAGS    = -fsanitize=address,undefined \
+              -static-libasan -static-libubsan
 DEBUGFLAG   = -g
 
 TOV_PUB    ?= /usr/local
@@ -22,8 +23,7 @@ MKOUTDIR    = mkdir -p "$$(dirname "$@")"
 ALIB_SAN    = build/lib211.a
 ALIB_UNSAN  = build/lib211-unsan.a
 SOLIB_SAN   = build/lib211.so
-SOLIB_UNSAN = build/lib211-unsan.so
-LIBS        = $(ALIB_SAN) $(ALIB_UNSAN) $(SOLIB_SAN) $(SOLIB_UNSAN)
+LIBS        = $(ALIB_SAN) $(ALIB_UNSAN) $(SOLIB_SAN)
 
 SRCS        = $(wildcard src/*.c)
 OBJS_SAN    = $(SRCS:%.c=build/%.o)

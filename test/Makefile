@@ -2,8 +2,9 @@ PREFIX  ?= /usr/local
 LIBDIR   = ../build
 CPPFLAGS = -I../include
 CFLAGS   = -g -Wall -pedantic-errors -std=c11 $(SANFLAGS)
-LDFLAGS  = -L$(LIBDIR) -l211 $(SANFLAGS)
-SANFLAGS = -fsanitize=address,undefined
+# SANFLAGS = -fsanitize=address,undefined
+SANFLAGS =
+LDFLAGS  = -L$(LIBDIR) -ldl -l211-unsan $(SANFLAGS)
 LIBENV   = LD_LIBRARY_PATH=$(LIBDIR)
 
 TESTS    = use_lib211_test \

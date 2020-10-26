@@ -1,18 +1,19 @@
-#define _XOPEN_SOURCE 700
 #define LIB211_RAW_ALLOC
 #define LIB211_RAW_EXIT
+#define _XOPEN_SOURCE 700
+#define _GNU_SOURCE
 
 #include "211_alloc_limit.h"
 #include "211.h"
 
 #include <ctype.h>
+#include <dlfcn.h>
 #include <errno.h>
 #include <limits.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
-#include <stdlib.h>
 #include <stdlib.h>
 #include <stdnoreturn.h>
 #include <string.h>
@@ -82,6 +83,67 @@ alloc_tracef(char const* format, ...)
     va_end(ap);
     fprintf(trace_out, "\n");
 }
+
+///
+/// MALLOC SHIM
+///
+
+static void *(*sys_calloc)(size_t count, size_t size);
+static void  (*sys_free)(void *ptr);
+static void *(*sys_malloc)(size_t size);
+static void *(*sys_realloc)(void *ptr, size_t size);
+
+static void *(*cur_calloc)(size_t count, size_t size);
+static void  (*cur_free)(void *ptr);
+static void *(*cur_malloc)(size_t size);
+static void *(*cur_realloc)(void *ptr, size_t size);
+static void *(*cur_reallocf)(void *ptr, size_t size);
+
+static bool malloc_shim_is_init = false;
+
+static void init_malloc_shim(void)
+{
+    if (malloc_shim_is_init) return;
+
+    sys_malloc = dlsym(RTLD_NEXT, "malloc");
+            // RTLD_LAZY|RTLD_LOCAL|RTLD_NODELETE);
+    if (!sys_malloc) {
+        perror("dlsym");
+        exit(253);
+    }
+
+    fprintf(stderr, "dlsym(malloc): %16p\n", sys_malloc);
+    fprintf(stderr, "malloc:        %16p\n", &malloc);
+
+    fprintf(stderr, "dlsym(malloc)(11): %16p\n", sys_malloc(11));
+    fprintf(stderr, "malloc(11):        %16p\n", malloc(11));
+
+    malloc_shim_is_init = true;
+
+    _exit(0);
+}
+
+/* void *calloc(size_t count, size_t size) */
+/* { */
+/* } */
+
+/* void  free(void *ptr) */
+/* { */
+/* } */
+
+void *malloc(size_t size)
+{
+    fprintf(stderr, "\tmy_malloc(%zu);\n", size);
+    return calloc(size, 1);
+}
+
+/* void *realloc(void *ptr, size_t size) */
+/* { */
+/* } */
+
+/* void *reallocf(void *ptr, size_t size) */
+/* { */
+/* } */
 
 
 ///
@@ -164,6 +226,8 @@ get_limit(char const* const name, size_t* const out)
 static void
 alloc_limit_init_once(void)
 {
+    init_malloc_shim();
+
     size_t n;
 
     if (get_limit(EV_TOTAL, &n) || get_limit(EV_TOTAL2, &n))
@@ -224,9 +288,10 @@ static void forget_everything(void)
 static void remember_allocation(void* p, size_t n)
 {
     alloc_list_t node = malloc(sizeof *node);
+    // If we can't allocate a node then don't count it:
     if (!node) {
-        perror("lib211_alloc");
-        exit(255);
+        bytes_remaining += n;
+        return;
     }
 
     node->pointer = p;
