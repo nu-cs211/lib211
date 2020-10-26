@@ -8,8 +8,6 @@
 \- simulated out-of-memory errors
 .\"
 .SH SYNOPSIS
-.B "#include <211.h>"
-.br
 .B "#include <211_alloc_limit.h>"
 .PP
 void
