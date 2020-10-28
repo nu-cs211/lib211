@@ -1,8 +1,11 @@
-#define _XOPEN_SOURCE 700
 #define LIB211_RAW_ALLOC
 #define LIB211_RAW_EXIT
+#define _XOPEN_SOURCE 700
 
 #include "211.h"
+
+#ifdef LIB211_HAS_POSIX
+
 #include "buffer.h"
 #include "test_reporting.h"
 
@@ -348,3 +351,9 @@ static int fput_cstrlit(FILE* fout, char const* str)
 
     return count;
 }
+
+#else
+
+void* program_test_rt_needs_to_define_something____;
+
+#endif // LIB211_HAS_POSIX

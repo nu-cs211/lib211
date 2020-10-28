@@ -1,5 +1,6 @@
 # For building lib211.
 
+CC         ?= cc
 CPPFLAGS    = -Iinclude
 CFLAGS      = $(DEBUGFLAG) -O2 -fpic -std=c11 -pedantic -Wall
 LDFLAGS     = -shared
@@ -49,10 +50,10 @@ install: preprocess $(LIBS)
 	$(SUDO) chmod -R a+rX $(MANDIR)
 
 $(SOLIB_SAN): $(OBJS_SAN)
-	cc -o $@ $^ $(LDFLAGS) $(SANFLAGS)
+	$(CC) -o $@ $^ $(LDFLAGS) $(SANFLAGS)
 
 $(SOLIB_UNSAN): $(OBJS_UNSAN)
-	cc -o $@ $^ $(LDFLAGS)
+	$(CC) -o $@ $^ $(LDFLAGS)
 
 $(ALIB_SAN): $(OBJS_SAN)
 	ar -crs $@ $^

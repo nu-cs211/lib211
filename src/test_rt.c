@@ -1,10 +1,13 @@
 #define LIB211_RAW_ALLOC
 #define LIB211_RAW_EXIT
 
+#define _BSD_SOURCE
+#define _GNU_SOURCE
+#define _SVID_SOURCE
+#define _DEFAULT_SOURCE
 #define _XOPEN_SOURCE 700
 
-#include "lib211_test.h"
-#include "lib211_io.h"
+#include "211.h"
 #include "test_reporting.h"
 
 #include <ctype.h>
@@ -14,8 +17,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <sys/types.h>
-#include <sys/wait.h>
+#ifdef LIB211_HAS_POSIX
+#   include <sys/mman.h>
+#   include <sys/types.h>
+#   include <sys/wait.h>
+#endif
 
 #define NORMAL  "\33[0m"
 #define RED     "\33[0;31m"
@@ -24,7 +30,6 @@
 
 static bool atexit_installed = false;
 static bool tests_enabled    = false;
-static bool has_run_tests    = false;
 
 static unsigned pass_count   = 0;
 static unsigned fail_count   = 0;
@@ -35,7 +40,7 @@ static void print_test_results(void)
     unsigned check_count = pass_count + fail_count + error_count;
     FILE* fout = fail_count || error_count ? stderr : stdout;
     bool const use_color = isatty(fileno(fout));
-    char const* label_style = has_run_tests ? "test" : "check";
+    char const* const label_style = "check";
 
     fprintf(fout, "\n");
 
@@ -207,6 +212,87 @@ static void color_word(const char* color, const char* word)
     fflush(stdout);
 }
 
+struct test_outcome
+{
+    unsigned pass_count, fail_count, error_count;
+};
+
+
+#ifdef LIB211_HAS_POSIX
+# ifndef MAP_ANON
+#   ifdef MAP_ANONYMOUS
+#     define MAP_ANON MAP_ANONYMOUS
+#   else
+#     define MAP_ANON 0
+#   endif
+# endif
+
+static struct test_outcome
+call_test_function(void (*test_fn)(void))
+{
+
+    struct test_outcome* outcome
+        = mmap(NULL, sizeof *outcome, PROT_READ|PROT_WRITE, MAP_ANON|MAP_SHARED, -1, 0);
+    if (outcome == MAP_FAILED) goto os_error;
+
+    outcome->pass_count = outcome->fail_count = outcome->error_count = 0;
+
+    pid_t pid = fork();
+    if (pid < 0) goto os_error;
+
+    if (pid == 0) {
+        pass_count = fail_count = error_count = 0;
+
+        test_fn();
+
+        outcome->pass_count = pass_count;
+        outcome->fail_count = fail_count;
+        outcome->error_count = error_count;
+
+        // Don't run our exit handler in here.
+        tests_enabled = false;
+
+        exit(0);
+    }
+
+    int status;
+    int waitpid_res = waitpid(pid, &status, 0);
+    struct test_outcome result = *outcome;
+
+    int munmap_res = munmap(outcome, sizeof *outcome);
+
+    if (waitpid_res < 0 || munmap_res < 0) goto os_error;
+
+    if (! WIFEXITED(status)) {
+        ++result.error_count;
+    }
+
+    return result;
+
+os_error:
+    printf("\nunexpected error:\n");
+    fflush(stdout);
+    perror("RUN_TEST");
+    exit(11);
+}
+#else // LIB211_HAS_POSIX
+static struct test_outcome
+call_test_function(void (*test_fn)(void))
+{
+    unsigned old_pass_count = pass_count,
+             old_fail_count = fail_count,
+             old_error_count = error_count;
+
+    test_fn();
+
+    return (struct test_outcome) {
+        .pass_count = pass_count - old_pass_count,
+        .fail_count = fail_count - old_fail_count,
+        .error_count = error_count - old_error_count,
+    };
+}
+#endif // LIB211_HAS_POSIX
+
 bool lib211_do_run_test(
         void (*test_fn)(void),
         char const* source_expr,
@@ -214,58 +300,26 @@ bool lib211_do_run_test(
         int line)
 {
     start_testing();
-    has_run_tests = true;
 
     bool const use_color = isatty(fileno(stdout));
 
     printf("%s... ", source_expr);
     fflush(stdout);
 
-    pid_t pid = fork();
-    if (pid < 0) goto bad_error;
+    struct test_outcome outcome = call_test_function(test_fn);
 
-    if (pid == 0) {
-        pass_count = fail_count = error_count = 0;
-
-        test_fn();
-
-        // Don't run our exit handler in here.
-        tests_enabled = false;
-
-        if (error_count) exit(2);
-        else if (fail_count) exit(1);
-        else exit(0);
+    if (outcome.error_count) {
+        printf("\n%s ", source_expr);
+        color_word(use_color ? RVRED : NULL, "errored");
+        return false;
+    } else if (outcome.fail_count) {
+        printf("\n%s ", source_expr);
+        color_word(use_color ? RED : NULL, "failed");
+        return false;
+    } else {
+        color_word(use_color ? GREEN : NULL, "passed");
+        return true;
     }
-
-    int status;
-    int res = waitpid(pid, &status, 0);
-    if (res < 0) goto bad_error;
-
-    if (WIFEXITED(status)) {
-        switch (WEXITSTATUS(status)) {
-        case 0:
-            color_word(use_color ? GREEN : NULL, "passed");
-            ++pass_count;
-            return true;
-
-        case 1:
-            printf("\n%s ", source_expr);
-            color_word(use_color ? RED : NULL, "failed");
-            ++fail_count;
-            return false;
-        }
-    }
-
-    printf("\n%s ", source_expr);
-    color_word(use_color ? RVRED : NULL, "errored");
-    ++error_count;
-    return false;
-
-bad_error:
-    printf("\nunexpected error:\n");
-    fflush(stdout);
-    perror("RUN_TEST");
-    exit(11);
 }
 
 bool lib211_do_check(
