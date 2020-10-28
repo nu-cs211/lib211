@@ -13,6 +13,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <unistd.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -217,6 +218,11 @@ struct test_outcome
     unsigned pass_count, fail_count, error_count;
 };
 
+struct test_outcome_holder
+{
+    volatile struct test_outcome o;
+    volatile bool ready;
+};
 
 #ifdef LIB211_HAS_POSIX
 # ifndef MAP_ANON
@@ -231,15 +237,17 @@ static struct test_outcome
 call_test_function(void (*test_fn)(void))
 {
 
-    struct test_outcome volatile* outcome;
+    struct test_outcome_holder* outcome
+        = mmap(NULL, sizeof *outcome,
+               PROT_READ|PROT_WRITE,
+               MAP_ANON|MAP_SHARED,
+               -1, 0);
+    if (outcome == MAP_FAILED) goto os_error;
 
-    void* mmapped = mmap(NULL, sizeof *outcome,
-                         PROT_READ|PROT_WRITE,
-                         MAP_ANON|MAP_SHARED, -1, 0);
-    if (mmapped == MAP_FAILED) goto os_error;
-
-    outcome = mmapped;
-    outcome->pass_count = outcome->fail_count = outcome->error_count = 0;
+    outcome->o.pass_count = 0;
+    outcome->o.fail_count = 0;
+    outcome->o.error_count = 0;
+    outcome->ready = false;
 
     pid_t pid = fork();
     if (pid < 0) goto os_error;
@@ -249,9 +257,10 @@ call_test_function(void (*test_fn)(void))
 
         test_fn();
 
-        outcome->pass_count = pass_count;
-        outcome->fail_count = fail_count;
-        outcome->error_count = error_count;
+        outcome->o.pass_count = pass_count;
+        outcome->o.fail_count = fail_count;
+        outcome->o.error_count = error_count;
+        outcome->ready = true;
 
         // Don't run our exit handler in here.
         tests_enabled = false;
@@ -261,15 +270,22 @@ call_test_function(void (*test_fn)(void))
 
     int status;
     int waitpid_res = waitpid(pid, &status, 0);
-    struct test_outcome result = *outcome;
+    if (waitpid_res < 0) {
+        munmap(outcome, sizeof *outcome);
+        goto os_error;
+    }
 
-    int munmap_res = munmap(mmapped, sizeof *outcome);
+    struct test_outcome result = {0, 0, 0};
 
-    if (waitpid_res < 0 || munmap_res < 0) goto os_error;
-
-    if (! WIFEXITED(status)) {
+    if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
+        while (!outcome->ready) { }
+        result = outcome->o;
+    } else {
         ++result.error_count;
     }
+
+    int munmap_res = munmap(outcome, sizeof *outcome);
+    if (munmap_res < 0) goto os_error;
 
     return result;
 
