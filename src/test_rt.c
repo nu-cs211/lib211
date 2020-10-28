@@ -231,10 +231,14 @@ static struct test_outcome
 call_test_function(void (*test_fn)(void))
 {
 
-    struct test_outcome* outcome
-        = mmap(NULL, sizeof *outcome, PROT_READ|PROT_WRITE, MAP_ANON|MAP_SHARED, -1, 0);
-    if (outcome == MAP_FAILED) goto os_error;
+    struct test_outcome volatile* outcome;
 
+    void* mmapped = mmap(NULL, sizeof *outcome,
+                         PROT_READ|PROT_WRITE,
+                         MAP_ANON|MAP_SHARED, -1, 0);
+    if (mmapped == MAP_FAILED) goto os_error;
+
+    outcome = mmapped;
     outcome->pass_count = outcome->fail_count = outcome->error_count = 0;
 
     pid_t pid = fork();
@@ -259,7 +263,7 @@ call_test_function(void (*test_fn)(void))
     int waitpid_res = waitpid(pid, &status, 0);
     struct test_outcome result = *outcome;
 
-    int munmap_res = munmap(outcome, sizeof *outcome);
+    int munmap_res = munmap(mmapped, sizeof *outcome);
 
     if (waitpid_res < 0 || munmap_res < 0) goto os_error;
 
