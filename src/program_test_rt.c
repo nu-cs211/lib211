@@ -25,7 +25,7 @@
 
 #define ARRAY_LEN(A)      (sizeof (A) / sizeof *(A))
 
-#define FOR_ARRAY(I, A)   for (size_t I = 0; I < ARRAY_LEN(A); ++i)
+#define FOR_ARRAY(I, A)   for (size_t I = 0; I < ARRAY_LEN(A); ++I)
 
 #define WARN_IF(C) \
     do { \
