@@ -6,8 +6,8 @@ LDFLAGS     = -shared
 SANFLAGS    = -fsanitize=address,undefined
 DEBUGFLAG   = -g
 
-TOV_PUB    ?= /usr/local
-DESTDIR    ?= $(TOV_PUB)
+PUB211     ?= /usr/local
+DESTDIR    ?= $(PUB211)
 MANDIR     ?= $(DESTDIR)/man
 LIBDIR     ?= $(DESTDIR)/lib
 INCLUDEDIR ?= $(DESTDIR)/include
