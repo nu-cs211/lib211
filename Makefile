@@ -14,10 +14,15 @@ INCLUDEDIR ?= $(DESTDIR)/include
 
 DEPFLAGS    = -MT $@ -MMD -MP -MF $@.d
 
-PREPROCESS  = scripts/preprocess.sh
 COMPILE.c   = $(CC) $(DEPFLAGS) $(CFLAGS) $(CPPFLAGS) -c
 OUTPUT_OPT  = -o $@
 MKOUTDIR    = mkdir -p "$$(dirname "$@")"
+
+PREPROC.sh  = scripts/preprocess.sh
+MAN.in      = $(shell find man -name '*.in')
+MAN.out     = $(MAN.in:%.in=%)
+INCLUDE.in  = $(shell find include -name '*.in')
+INCLUDE.out = $(INCLUDE.in:%.in=%)
 
 ALIB_SAN    = build/lib211.a
 ALIB_UNSAN  = build/lib211-unsan.a
@@ -30,7 +35,11 @@ OBJS_SAN    = $(SRCS:%.c=build/%.o)
 OBJS_UNSAN  = $(SRCS:%.c=build/%-unsan.o)
 OBJS        = $(OBJS_SAN) $(OBJS_UNSAN)
 
-all: $(LIBS)
+all: lib man
+
+lib: $(LIBS)
+
+man: $(MAN.out)
 
 test: $(LIBS)
 	make -C test
@@ -38,7 +47,7 @@ test: $(LIBS)
 test-install:
 	make -C test test-install PREFIX=$(DESTDIR)
 
-install: preprocess $(LIBS)
+install: all
 	$(SUDO) install -dm 755 $(LIBDIR)
 	$(SUDO) install -m 755 $(LIBS) $(LIBDIR)
 	$(SUDO) install -dm 755 $(INCLUDEDIR)
@@ -47,6 +56,9 @@ install: preprocess $(LIBS)
 	tar --exclude='*.in' -c man | \
 	    $(SUDO) tar --strip-components=1 -xC $(MANDIR)
 	$(SUDO) chmod -R a+rX $(MANDIR)
+
+clean:
+	git clean -fX
 
 $(SOLIB_SAN): $(OBJS_SAN)
 	cc -o $@ $^ $(LDFLAGS) $(SANFLAGS)
@@ -64,28 +76,24 @@ build/src/alloc_rt.o: DEBUGFLAG =
 build/src/alloc_rt-unsan.o: DEBUGFLAG =
 
 build/%.o: %.c
-build/%.o: %.c build/%.o.d
+build/%.o: %.c build/%.o.d $(INCLUDE.out)
 	@$(MKOUTDIR)
 	$(COMPILE.c) $(OUTPUT_OPT) $< $(SANFLAGS)
 
 build/%-unsan.o: %.c
-build/%-unsan.o: %.c build/%-unsan.o.d
+build/%-unsan.o: %.c build/%-unsan.o.d $(INCLUDE.out)
 	@$(MKOUTDIR)
 	$(COMPILE.c) $(OUTPUT_OPT) $<
 
-preprocess:
-	$(PREPROCESS)
+%: %.in .version
+	$(PREPROC.sh) $<
 
 %.h: %.h.in .version
-	$(PREPROCESS) $<
+	$(PREPROC.sh) $<
 
 DEPFILES := $(SRCS:%.c=build/%.o.d) \
             $(SRCS:%.c=build/%-unsan.o.d)
 $(DEPFILES):
 include $(wildcard $(DEPFILES))
 
-clean:
-	$(RM) -R build $(DEPDIR)
-	make -C test clean
-
-.PHONY: clean test test-install install preprocess
+.PHONY: all lib man test test-install install clean
