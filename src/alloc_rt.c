@@ -272,6 +272,8 @@ static void* alloc_limit_did_alloc(void* p, size_t n)
 
 static void alloc_limit_will_free(void* p)
 {
+    if (!p) return;
+
     if (alloc_limit_state == LIMIT_PEAK)
         forget_allocation(p);
 }
@@ -280,34 +282,6 @@ static void alloc_limit_will_free(void* p)
 ///
 /// WRAPPERS FOR MALLOC/FREE API
 ///
-
-static inline void*
-quiet_calloc(size_t nmemb, size_t size)
-{
-    if (size <= SIZE_MAX / nmemb &&
-            alloc_limit_may_alloc(nmemb * size))
-        return alloc_limit_did_alloc(calloc(nmemb, size), nmemb * size);
-    else
-        return NULL;
-}
-
-static inline void*
-quiet_malloc(size_t size)
-{
-    if (alloc_limit_may_alloc(size))
-        return alloc_limit_did_alloc(malloc(size), size);
-    else
-        return NULL;
-}
-
-static inline void
-quiet_free(void *ptr)
-{
-    if (ptr) {
-        alloc_limit_will_free(ptr);
-        free(ptr);
-    }
-}
 
 static inline void*
 realloc_with_total_limit(void *ptr, size_t new_size)
@@ -345,33 +319,30 @@ realloc_with_peak_limit(void *ptr, size_t new_size)
     return ptr;
 }
 
-static inline void*
-quiet_realloc(void *ptr, size_t new_size)
-{
-    if (!ptr) return quiet_malloc(new_size);
+#define DO_CALLOC(NMEMB, SIZE) \
+    (SIZE <= SIZE_MAX / NMEMB && \
+         alloc_limit_may_alloc(NMEMB * SIZE) \
+     ? alloc_limit_did_alloc(calloc(NMEMB, SIZE), NMEMB * SIZE) \
+     : NULL)
 
-    switch (alloc_limit_state) {
-    case NO_LIMIT:
-        return realloc(ptr, new_size);
+#define DO_MALLOC(SIZE) \
+    (alloc_limit_may_alloc(SIZE) \
+     ? alloc_limit_did_alloc(malloc(SIZE), SIZE) \
+     : NULL)
 
-    case LIMIT_TOTAL:
-        return realloc_with_total_limit(ptr, new_size);
+#define DO_FREE(PTR) \
+     (alloc_limit_will_free(PTR), free(PTR))
 
-    case LIMIT_PEAK:
-        return realloc_with_peak_limit(ptr, new_size);
-
-    default:
-        return NULL;
-    }
-}
-
-static inline void*
-quiet_reallocf(void *ptr, size_t new_size)
-{
-    void* result = quiet_realloc(ptr, new_size);
-    if (!result) quiet_free(ptr);
-    return result;
-}
+#define DO_REALLOC(PTR, NEW_SIZE) \
+    (!PTR \
+     ? DO_MALLOC(NEW_SIZE) \
+     : alloc_limit_state == NO_LIMIT \
+     ? realloc(PTR, NEW_SIZE) \
+     : alloc_limit_state == LIMIT_TOTAL \
+     ? realloc_with_total_limit(PTR, NEW_SIZE) \
+     : alloc_limit_state == LIMIT_PEAK \
+     ? realloc_with_peak_limit(PTR, NEW_SIZE) \
+     : NULL)
 
 
 /////
@@ -388,7 +359,7 @@ void* rt211_calloc(size_t nmemb, size_t size)
     ENSURE_ALLOC_DEBUG_INIT();
     alloc_tracef("calloc(%zu, %zu)", nmemb, size);
 
-    return quiet_calloc(nmemb, size);
+    return DO_CALLOC(nmemb, size);
 }
 
 void* rt211_malloc(size_t size)
@@ -396,7 +367,7 @@ void* rt211_malloc(size_t size)
     ENSURE_ALLOC_DEBUG_INIT();
     alloc_tracef("malloc(%zu)", size);
 
-    return quiet_malloc(size);
+    return DO_MALLOC(size);
 }
 
 void rt211_free(void *ptr)
@@ -404,7 +375,7 @@ void rt211_free(void *ptr)
     ENSURE_ALLOC_DEBUG_INIT();
     alloc_tracef("free(%p)", ptr);
 
-    quiet_free(ptr);
+    DO_FREE(ptr);
 }
 
 void* rt211_realloc(void *ptr, size_t size)
@@ -412,7 +383,7 @@ void* rt211_realloc(void *ptr, size_t size)
     ENSURE_ALLOC_DEBUG_INIT();
     alloc_tracef("realloc(%p, %zu)", ptr, size);
 
-    return quiet_realloc(ptr, size);
+    return DO_REALLOC(ptr, size);
 }
 
 void* rt211_reallocf(void *ptr, size_t size)
@@ -420,7 +391,9 @@ void* rt211_reallocf(void *ptr, size_t size)
     ENSURE_ALLOC_DEBUG_INIT();
     alloc_tracef("reallocf(%p, %zu)", ptr, size);
 
-    return quiet_reallocf(ptr, size);
+    void* result = DO_REALLOC(ptr, size);
+    if (!result) DO_FREE(ptr);
+    return result;
 }
 
 

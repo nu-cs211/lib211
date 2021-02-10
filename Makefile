@@ -1,42 +1,47 @@
 # For building lib211.
 
 CPPFLAGS    = -Iinclude
-CFLAGS      = $(DEBUGFLAG) $(OPTFLAG) -fpic -std=c11 -pedantic -Wall
-SANFLAGS    = -fsanitize=address,undefined
+CFLAGS      = $(DEBUGFLAG) -O0 -fpic -std=c11 -pedantic -Wall $(SANFLAG)
+LDFLAGS     = $(SANFLAG)
 
 DEBUGFLAG   = -g
-OPTFLAG     = -O2
+RAWFLAG     = -DLIB211_RAW_ALLOC
+SANFLAG     = -fsanitize=address,undefined
+
+RAWSUF      = -raw_alloc
+UNSANSUF    = -unsan
 
 PUB211     ?= /usr/local
 DESTDIR    ?= $(PUB211)
 MANDIR     ?= $(DESTDIR)/man
 LIBDIR     ?= $(DESTDIR)/lib
 INCLUDEDIR ?= $(DESTDIR)/include
+OUTDIR     ?= build
 
 DEPFLAGS    = -MT $@ -MMD -MP -MF $@.d
 
-COMPILE.c   = $(CC) $(DEPFLAGS) $(CFLAGS) $(CPPFLAGS) -c
-OUTPUT_OPT  = -o $@
+COMPILE.c   = $(CC) -c -o $@ $< $(CPPFLAGS) $(CFLAGS) $(DEPFLAGS)
+LINK.shared = $(CC) -shared -o $@ $^ $(LDFLAGS)
+LINK.static = $(AR) -crs $@ $^
 MKOUTDIR    = mkdir -p "$$(dirname "$@")"
 
 PREPROC.sh  = scripts/preprocess.sh
-READLINE.sh = scripts/read_line.sh
 MAN.in      = $(shell find man -name '*.in')
 MAN.out     = $(MAN.in:%.in=%)
 INCLUDE.in  = $(shell find include -name '*.in')
 INCLUDE.out = $(INCLUDE.in:%.in=%)
 
-ALIB_SAN    = build/lib211.a
-ALIB_UNSAN  = build/lib211-unsan.a
-SOLIB_SAN   = build/lib211.so
-SOLIB_UNSAN = build/lib211-unsan.so
+LIBSTEM     = $(OUTDIR)/lib211
+ALIB_UNSAN  = $(LIBSTEM)$(UNSANSUF).a
+SOLIB_SAN   = $(LIBSTEM).so
+SOLIB_UNSAN = $(LIBSTEM)$(UNSANSUF).so
 LIBS        = $(ALIB_UNSAN) $(SOLIB_SAN) $(SOLIB_UNSAN)
 
-SRCS        = build/read_line.c \
-              $(wildcard src/*.c)
-OBJS_SAN    = $(SRCS:%.c=build/%.o)
-OBJS_UNSAN  = $(SRCS:%.c=build/%-unsan.o)
-OBJS        = $(OBJS_SAN) $(OBJS_UNSAN)
+SRCS        = $(wildcard src/*.c)
+OBJS_SAN    = $(OUTDIR)/src/read_line$(RAWSUF).o \
+              $(SRCS:%.c=$(OUTDIR)/%.o)
+OBJS_UNSAN  = $(OBJS_SAN:%.o=%$(UNSANSUF).o)
+ALL_OBJS    = $(OBJS_SAN) $(OBJS_UNSAN)
 
 all: lib man
 
@@ -63,30 +68,38 @@ install: all
 clean:
 	git clean -fX
 
-$(SOLIB_SAN): $(OBJS_SAN)
-	cc -o $@ $^ -shared $(SANFLAGS)
-
-$(SOLIB_UNSAN): $(OBJS_UNSAN)
-	cc -o $@ $^ -shared
-
-$(ALIB_SAN): $(OBJS_SAN)
-	ar -crs $@ $^
+$(OUTDIR)/src/alloc_rt%.o:              DEBUGFLAG =
+%$(RAWSUF).o %$(RAWSUF)$(UNSANSUF).o:   CPPFLAGS += $(RAWFLAG)
+$(SOLIB_UNSAN) $(OBJS_UNSAN):           SANFLAG =
 
 $(ALIB_UNSAN): $(OBJS_UNSAN)
-	ar -crs $@ $^
+	$(LINK.static)
 
-build/src/alloc_rt.o build/src/alloc_rt-unsan.o: DEBUGFLAG =
-build/src/alloc_rt.o build/src/alloc_rt-unsan.o: OPTFLAG = -O0
+$(SOLIB_SAN): $(OBJS_SAN)
+	$(LINK.shared)
 
-build/%.o: %.c
-build/%.o: %.c build/%.o.d $(INCLUDE.out)
+$(SOLIB_UNSAN): $(OBJS_UNSAN)
+	$(LINK.shared)
+
+$(OUTDIR)/%.o: %.c
+$(OUTDIR)/%.o: %.c $(OUTDIR)/%.o.d $(INCLUDE.out)
 	@$(MKOUTDIR)
-	$(COMPILE.c) $(OUTPUT_OPT) $< $(SANFLAGS)
+	$(COMPILE.c)
 
-build/%-unsan.o: %.c
-build/%-unsan.o: %.c build/%-unsan.o.d $(INCLUDE.out)
+$(OUTDIR)/%$(UNSANSUF).o: %.c
+$(OUTDIR)/%$(UNSANSUF).o: %.c $(OUTDIR)/%$(UNSANSUF).o.d $(INCLUDE.out)
 	@$(MKOUTDIR)
-	$(COMPILE.c) $(OUTPUT_OPT) $<
+	$(COMPILE.c)
+
+$(OUTDIR)/%$(RAWSUF).o: %.c
+$(OUTDIR)/%$(RAWSUF).o: %.c $(OUTDIR)/%$(RAWSUF).o.d $(INCLUDE.out)
+	@$(MKOUTDIR)
+	$(COMPILE.c)
+
+$(OUTDIR)/%$(RAWSUF)$(UNSANSUF).o: %.c
+$(OUTDIR)/%$(RAWSUF)$(UNSANSUF).o: %.c $(OUTDIR)/%$(RAWSUF)$(UNSANSUF).o.d $(INCLUDE.out)
+	@$(MKOUTDIR)
+	$(COMPILE.c)
 
 %: %.in .version
 	$(PREPROC.sh) $<
@@ -94,11 +107,7 @@ build/%-unsan.o: %.c build/%-unsan.o.d $(INCLUDE.out)
 %.h: %.h.in .version
 	$(PREPROC.sh) $<
 
-build/read_line.c: src/read_line.inc $(READLINE.sh)
-	$(READLINE.sh) $< > $@
-
-DEPFILES := $(SRCS:%.c=build/%.o.d) \
-            $(SRCS:%.c=build/%-unsan.o.d)
+DEPFILES := $(ALL_OBJS:%=%.d)
 $(DEPFILES):
 include $(wildcard $(DEPFILES))
 

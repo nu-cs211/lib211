@@ -10,6 +10,7 @@
 #undef free
 #undef read_line
 #undef fread_line
+#undef xread_line
 #undef prompt_line
 
 #ifndef LIB211_RAW_ALLOC
@@ -21,6 +22,7 @@
 #else
 #  define read_line    read_line_raw_alloc
 #  define fread_line   fread_line_raw_alloc
+#  define xread_line   xread_line_raw_alloc
 #  define prompt_line  prompt_line_raw_alloc
 #endif
 
@@ -29,6 +31,6 @@ void* malloc(size_t size);
 void* calloc(size_t count, size_t size);
 void* realloc(void* ptr, size_t size);
 void* reallocf(void* ptr, size_t size);
-void free(void* ptr);
+void  free(void* ptr);
 
 #endif // _LIB211_ALLOC_H_
