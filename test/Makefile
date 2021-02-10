@@ -1,4 +1,4 @@
-PREFIX  ?= /usr/local
+PUB211  ?= /usr/local
 LIBDIR   = ../build
 CPPFLAGS = -I../include
 CFLAGS   = -g -Wall -pedantic-errors -std=c11 $(SANFLAGS)
@@ -13,7 +13,7 @@ TESTS    = use_lib211_test \
 EXES     = $(TESTS:%=build/%)
 SYS_EXES = $(TESTS:%=build/%.system)
 
-test-install build/%.system: LIBDIR = $(PREFIX)/lib
+test-install build/%.system: LIBDIR = $(PUB211)/lib
 
 test: $(EXES)
 	for test in $(TESTS); do \

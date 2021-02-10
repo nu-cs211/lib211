@@ -1,10 +1,11 @@
 # For building lib211.
 
 CPPFLAGS    = -Iinclude
-CFLAGS      = $(DEBUGFLAG) -O2 -fpic -std=c11 -pedantic -Wall
-LDFLAGS     = -shared
+CFLAGS      = $(DEBUGFLAG) $(OPTFLAG) -fpic -std=c11 -pedantic -Wall
 SANFLAGS    = -fsanitize=address,undefined
+
 DEBUGFLAG   = -g
+OPTFLAG     = -O2
 
 PUB211     ?= /usr/local
 DESTDIR    ?= $(PUB211)
@@ -19,6 +20,7 @@ OUTPUT_OPT  = -o $@
 MKOUTDIR    = mkdir -p "$$(dirname "$@")"
 
 PREPROC.sh  = scripts/preprocess.sh
+READLINE.sh = scripts/read_line.sh
 MAN.in      = $(shell find man -name '*.in')
 MAN.out     = $(MAN.in:%.in=%)
 INCLUDE.in  = $(shell find include -name '*.in')
@@ -30,7 +32,8 @@ SOLIB_SAN   = build/lib211.so
 SOLIB_UNSAN = build/lib211-unsan.so
 LIBS        = $(ALIB_UNSAN) $(SOLIB_SAN) $(SOLIB_UNSAN)
 
-SRCS        = $(wildcard src/*.c)
+SRCS        = build/read_line.c \
+              $(wildcard src/*.c)
 OBJS_SAN    = $(SRCS:%.c=build/%.o)
 OBJS_UNSAN  = $(SRCS:%.c=build/%-unsan.o)
 OBJS        = $(OBJS_SAN) $(OBJS_UNSAN)
@@ -61,10 +64,10 @@ clean:
 	git clean -fX
 
 $(SOLIB_SAN): $(OBJS_SAN)
-	cc -o $@ $^ $(LDFLAGS) $(SANFLAGS)
+	cc -o $@ $^ -shared $(SANFLAGS)
 
 $(SOLIB_UNSAN): $(OBJS_UNSAN)
-	cc -o $@ $^ $(LDFLAGS)
+	cc -o $@ $^ -shared
 
 $(ALIB_SAN): $(OBJS_SAN)
 	ar -crs $@ $^
@@ -72,8 +75,8 @@ $(ALIB_SAN): $(OBJS_SAN)
 $(ALIB_UNSAN): $(OBJS_UNSAN)
 	ar -crs $@ $^
 
-build/src/alloc_rt.o: DEBUGFLAG =
-build/src/alloc_rt-unsan.o: DEBUGFLAG =
+build/src/alloc_rt.o build/src/alloc_rt-unsan.o: DEBUGFLAG =
+build/src/alloc_rt.o build/src/alloc_rt-unsan.o: OPTFLAG = -O0
 
 build/%.o: %.c
 build/%.o: %.c build/%.o.d $(INCLUDE.out)
@@ -90,6 +93,9 @@ build/%-unsan.o: %.c build/%-unsan.o.d $(INCLUDE.out)
 
 %.h: %.h.in .version
 	$(PREPROC.sh) $<
+
+build/read_line.c: src/read_line.inc $(READLINE.sh)
+	$(READLINE.sh) $< > $@
 
 DEPFILES := $(SRCS:%.c=build/%.o.d) \
             $(SRCS:%.c=build/%-unsan.o.d)

@@ -1,5 +1,3 @@
-#include "lib211_io.h"
-
 static
 void* surely_realloc(void* old, size_t size)
 {
