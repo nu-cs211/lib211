@@ -40,16 +40,11 @@ static void do_test(char const* a, char const* b)
     int status;
     NON_NEG( waitpid(pid, &status, 0) );
 
-    if (b == NULL) {
-        CHECK( WIFSIGNALED(status) );
-        CHECK_INT( WTERMSIG(status), SIGABRT );
-    } else {
-        CHECK( WIFEXITED(status) );
-        if (a && !strcmp(a, b))
-            CHECK_INT( WEXITSTATUS(status), 0 );
-        else
-            CHECK_INT( WEXITSTATUS(status), 2 );
-    }
+    CHECK( WIFEXITED(status) );
+    if (a == b || (a && b && !strcmp(a, b)))
+        CHECK_INT( WEXITSTATUS(status), 0 );
+    else
+        CHECK_INT( WEXITSTATUS(status), 2 );
 }
 
 int main(int argc, char* argv[])

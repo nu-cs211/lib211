@@ -55,16 +55,12 @@ The
 .BR CHECK_STRING ()
 form does not compare the pointer values it is given, but the
 string objects they point to.
-It expects to receive valid pointers to 0-terminated \fIchar\fR arrays,
-which it compares using
-.BR strcmp (3).
-A test passes when the pointers are both non-NULL and point to equal
-strings. NULL pointers passed to
-.BR CHECK_STRING ()
-do not result in undefined behavior, because it checks for NULL before
-dereferencing them; however, NULLs are considered a failed test. To
-check a value that you expect to be NULL, use
-.BR CHECK_POINTER ().
+It expects to receive either valid pointers to 0-terminated \fIchar\fR
+arrays, which it compares using
+.BR strcmp (3),
+or null pointers.
+A test passes when the pointers are both non-null and point to equal
+strings, or when both pointers are null.
 .\"
 .SH ERRORS
 Each argument to the

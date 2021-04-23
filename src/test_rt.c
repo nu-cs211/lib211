@@ -350,16 +350,9 @@ bool lib211_do_check_string(
         const char* file,
         int line)
 {
-    if (log_check(have && want && strcmp(have, want) == 0, file, line))
+    if (log_check(have == want || (have && want && strcmp(have, want) == 0),
+                  file, line))
         return true;
-
-    if (!want) {
-        eprintf("Fatal Error:\n");
-        eprintf("The second argument to CHECK_POINTER cannot be NULL.\n");
-        eprintf("If NULL is correct, use CHECK_POINTER. See the manual\n");
-        eprintf("page for CHECK(3) for additional information.");
-        abort();
-    }
 
     eprintf("  have: ");
     eprintf_string_literal(have);
