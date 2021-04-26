@@ -1,7 +1,7 @@
 PUB211  ?= /usr/local
 LIBDIR   = ../build
 CPPFLAGS = -I../include
-CFLAGS   = -g -Wall -pedantic-errors -std=c11 $(SANFLAGS)
+CFLAGS   = -g -Wall -std=c11 $(SANFLAGS) -Wno-gnu-zero-variadic-macro-arguments
 LDFLAGS  = -L$(LIBDIR) -l211 $(SANFLAGS)
 SANFLAGS = -fsanitize=address,undefined
 LIBENV   = LD_LIBRARY_PATH=$(LIBDIR)
@@ -34,10 +34,10 @@ build/alloc_limit_test.o build/alloc_record.o: alloc_record.h
 build/alloc_limit_test build/alloc_limit_test.system: build/alloc_record.o
 
 build/% build/%.system: build/%.o
-	cc -o $@ $^ $(LDFLAGS)
+	$(CC) -o $@ $^ $(LDFLAGS)
 
 build/%.o: %.c | build
-	cc -c -o $@ $< $(CPPFLAGS) $(CFLAGS)
+	$(CC) -c -o $@ $< $(CPPFLAGS) $(CFLAGS)
 
 build:
 	mkdir -p build

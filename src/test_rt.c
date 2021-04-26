@@ -1,3 +1,4 @@
+#define LIB211_KEEP_RUN_TEST_MACROS
 #define LIB211_RAW_ALLOC
 #define LIB211_RAW_EXIT
 
@@ -30,12 +31,100 @@ static unsigned pass_count   = 0;
 static unsigned fail_count   = 0;
 static unsigned error_count  = 0;
 
+struct color_style
+{
+    int (*put_color)(char const*);
+    int (*fput_color)(char const*, FILE*);
+    int (*fcolor_word)(char const* color, char const* word, FILE*);
+    char const* (*if_color)(char const* t, char const* f);
+};
+
+typedef struct color_style const* color_style_t;
+
+static int
+do_fputs(char const* data, FILE* stream)
+{
+    return fputs(data, stream);
+}
+
+static int
+do_not_fputs(char const* data, FILE* stream)
+{
+    (void) data, (void) stream;
+    return 0;
+}
+
+static int
+do_puts(char const* data)
+{
+    return do_fputs(data, stdout);
+}
+
+static int
+do_not_puts(char const* data)
+{
+    (void) data;
+    return 0;
+}
+
+static int
+do_fcolor_word(const char* color, const char* word, FILE* stream)
+{
+    return fprintf(stream, "%s%s%s", color, word, NORMAL);
+}
+
+static int
+do_not_fcolor_word(const char* color, const char* word, FILE* stream)
+{
+    return fputs(word, stream);
+}
+
+static char const*
+string_1_of_2(char const* a, char const* b)
+{
+    (void) b;
+    return a;
+}
+
+static char const*
+string_2_of_2(char const* a, char const* b)
+{
+    (void) a;
+    return b;
+}
+
+static struct color_style const
+color_color_style = {
+    .if_color = string_1_of_2,
+    .fput_color = do_fputs,
+    .put_color = do_puts,
+    .fcolor_word = do_fcolor_word,
+};
+
+static struct color_style const
+plain_color_style = {
+    .if_color = string_2_of_2,
+    .fput_color = do_not_fputs,
+    .put_color = do_not_puts,
+    .fcolor_word = do_not_fcolor_word,
+};
+
+static color_style_t
+stream_color_style(FILE* stream)
+{
+    if ( isatty(fileno(stream)) ) {
+        return &color_color_style;
+    } else {
+        return &plain_color_style;
+    }
+}
+
 static void print_test_results(void)
 {
+    char const* label_style = has_run_tests ? "test" : "check";
     unsigned check_count = pass_count + fail_count + error_count;
     FILE* fout = fail_count || error_count ? stderr : stdout;
-    bool const use_color = isatty(fileno(fout));
-    char const* label_style = has_run_tests ? "test" : "check";
+    color_style_t color_style = stream_color_style(fout);
 
     fprintf(fout, "\n");
 
@@ -45,19 +134,19 @@ static void print_test_results(void)
     }
 
     if (error_count) {
-        if (use_color) fprintf(fout, RVRED);
+        color_style->fput_color(RVRED, fout);
         fprintf(fout,
                 "*** %d %s%s could not be completed due to errors.",
                 error_count,
                 label_style,
                 error_count == 1 ? "" : "s");
-        if (use_color) fprintf(fout, NORMAL);
+        color_style->fput_color(NORMAL, fout);
     }
 
     if (!error_count && !(pass_count && fail_count)) {
         const char* descr = pass_count
-            ? use_color ? GREEN "passed" NORMAL : "passed"
-            : use_color ? RED   "failed" NORMAL : "failed";
+            ? color_style->if_color(GREEN "passed" NORMAL, "passed")
+            : color_style->if_color(RED   "failed" NORMAL, "failed");
 
         switch (check_count) {
             case 1:
@@ -198,76 +287,6 @@ static void eprintf_string_literal(const char* s) {
     }
 }
 
-static void color_word(const char* color, const char* word)
-{
-    printf("%s%s%s.\n",
-            color ? color : "",
-            word,
-            color ? NORMAL : "");
-    fflush(stdout);
-}
-
-bool lib211_do_run_test(
-        void (*test_fn)(void),
-        char const* source_expr,
-        char const* file,
-        int line)
-{
-    start_testing();
-    has_run_tests = true;
-
-    bool const use_color = isatty(fileno(stdout));
-
-    printf("%s... ", source_expr);
-    fflush(stdout);
-
-    pid_t pid = fork();
-    if (pid < 0) goto bad_error;
-
-    if (pid == 0) {
-        pass_count = fail_count = error_count = 0;
-
-        test_fn();
-
-        // Don't run our exit handler in here.
-        tests_enabled = false;
-
-        if (error_count) exit(2);
-        else if (fail_count) exit(1);
-        else exit(0);
-    }
-
-    int status;
-    int res = waitpid(pid, &status, 0);
-    if (res < 0) goto bad_error;
-
-    if (WIFEXITED(status)) {
-        switch (WEXITSTATUS(status)) {
-        case 0:
-            color_word(use_color ? GREEN : NULL, "passed");
-            ++pass_count;
-            return true;
-
-        case 1:
-            printf("\n%s ", source_expr);
-            color_word(use_color ? RED : NULL, "failed");
-            ++fail_count;
-            return false;
-        }
-    }
-
-    printf("\n%s ", source_expr);
-    color_word(use_color ? RVRED : NULL, "errored");
-    ++error_count;
-    return false;
-
-bad_error:
-    printf("\nunexpected error:\n");
-    fflush(stdout);
-    perror("RUN_TEST");
-    exit(11);
-}
-
 bool lib211_do_check(
         bool condition,
         const char* assertion,
@@ -390,3 +409,99 @@ _Noreturn void lib211_exit_rt(int result)
 
     exit(result);
 }
+
+
+static void
+print_run_test_outcome(
+        color_style_t  color_style,
+        const char*    color,
+        const char*    word)
+{
+    color_style->fcolor_word(color, word, stdout);
+    fputs(".\n", stdout);
+    fflush(stdout);
+}
+
+static void
+bad_error(char const* who)
+{
+    printf("\nunexpected error:\n");
+    fflush(stdout);
+    perror(who);
+    exit(11);
+}
+
+typedef enum
+{
+    TS_PARENT_FAILURE = 0,
+    TS_PARENT_SUCCESS = 1,
+    TS_YOU_ARE_A_LITTLE_BABY,
+} test_status_t;
+
+static test_status_t
+run_test_fork(char const* source_expr)
+{
+    start_testing();
+    has_run_tests = true;
+
+    color_style_t color_style = stream_color_style(stdout);
+
+    printf("%s... ", source_expr);
+    fflush(stdout);
+
+    pid_t pid = fork();
+    if (pid < 0) bad_error("RUN_TEST");
+
+    if (pid == 0) {
+        pass_count = fail_count = error_count = 0;
+        return TS_YOU_ARE_A_LITTLE_BABY;
+    }
+
+    int status;
+    int res = waitpid(pid, &status, 0);
+    if (res < 0) bad_error("RUN_TEST");
+
+    if (WIFEXITED(status)) {
+        switch (WEXITSTATUS(status)) {
+        case 0:
+            print_run_test_outcome(color_style, GREEN, "passed");
+            ++pass_count;
+            return TS_PARENT_SUCCESS;
+
+        case 1:
+            printf("\n%s ", source_expr);
+            print_run_test_outcome(color_style, RED, "failed");
+            ++fail_count;
+            return TS_PARENT_FAILURE;
+        }
+    }
+
+    printf("\n%s ", source_expr);
+    print_run_test_outcome(color_style, RVRED, "errored");
+    ++error_count;
+    return TS_PARENT_FAILURE;
+}
+
+_Noreturn static void
+run_test_exit_child(void)
+{
+    // Don't run our exit handler in here.
+    tests_enabled = false;
+
+    if (error_count) exit(2);
+    else if (fail_count) exit(1);
+    else exit(0);
+}
+
+
+#define RUN_TEST_BODY(...)                                      \
+    {                                                           \
+        test_status_t status = run_test_fork(source_expr);      \
+        if (status == TS_YOU_ARE_A_LITTLE_BABY) {               \
+            test_fn(__VA_ARGS__);                               \
+            run_test_exit_child();                              \
+        }                                                       \
+        return status == TS_PARENT_SUCCESS;                     \
+    }
+
+_NEXT_ARITY_0()

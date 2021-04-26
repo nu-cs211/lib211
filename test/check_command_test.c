@@ -68,24 +68,14 @@ static void test_env_exit_code(const char* env1, int expect_status)
     CHECK_EXEC(argv, "", ANY_OUTPUT, ANY_OUTPUT, expect_status);
 }
 
-static void test_env_alloc_limit_total_50_B(void)
+static void
+test_env_alloc_limit(bool total, char const* limit, int result)
 {
-    test_env_exit_code("RT211_ALLOC_LIMIT_TOTAL=50", 2);
-}
-
-static void test_env_alloc_limit_total_50_MB(void)
-{
-    test_env_exit_code("RT211_ALLOC_LIMIT_TOTAL=50M", 1);
-}
-
-static void test_env_alloc_limit_peak_50_MB(void)
-{
-    test_env_exit_code("RT211_ALLOC_LIMIT_PEAK=50M", 0);
-}
-
-static void test_env_alloc_limit_peak_50_GB(void)
-{
-    test_env_exit_code("RT211_ALLOC_LIMIT_PEAK=50G", 0);
+    char buf[100];
+    snprintf(buf, sizeof buf,
+            "RT211_ALLOC_LIMIT_%s=%s",
+            total ? "TOTAL" : "PEAK", limit);
+    test_env_exit_code(buf, result);
 }
 
 int main(void)
@@ -100,8 +90,8 @@ int main(void)
     RUN_TEST( test_grep_exec );
     RUN_TEST( test_cat_exec );
 
-    RUN_TEST( test_env_alloc_limit_total_50_B );
-    RUN_TEST( test_env_alloc_limit_total_50_MB );
-    RUN_TEST( test_env_alloc_limit_peak_50_MB );
-    RUN_TEST( test_env_alloc_limit_peak_50_GB );
+    RUN_TEST( test_env_alloc_limit, (_Bool)1, "50", 2 );
+    RUN_TEST( test_env_alloc_limit, (_Bool)1, "50M", 1 );
+    RUN_TEST( test_env_alloc_limit, (_Bool)0, "50M", 0 );
+    RUN_TEST( test_env_alloc_limit, (_Bool)0, "50G", 0 );
 }

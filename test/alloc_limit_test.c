@@ -173,6 +173,17 @@ static void test_stressful(void)
     free_all(r);
 }
 
+void test_void(void) { }
+void test_int(int m) { }
+void test_str(char const* m) { }
+void test_int_int(int m, int n) { }
+void test_str_int(char const* m, int n) { }
+void test_str_int_int(char const* l, int m, int n) { }
+void test_str_str_int(char const* l, char const* m, int n) { }
+void test_4i(int a, int b, int c, int d) { }
+
+#define L(N) _LIB211_RUN_TEST_##N
+
 int main(void)
 {
     RUN_TEST( test_no_init );

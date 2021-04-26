@@ -41,15 +41,19 @@
 
 // Pass for `expected_stdout` and/or `expected_stderr` if you
 // don’t want to check those.
-#define ANY_OUTPUT      NULL
+#define ANY_OUTPUT ((char*)0)
 
 // Pass for `expected_exit_code` if you don’t care what the exit
 // code is.
-#define ANY_EXIT        (-2)
+enum {
+    // Pass for `expected_exit_code` if any zero exit code whatsoever
+    // should succeed.
+    ANY_EXIT = -2,
 
-// Pass for `expected_exit_code` if any non-zero exit code should
-// succeed and zero should fail.
-#define ANY_EXIT_ERROR  (-1)
+    // Pass for `expected_exit_code` if any non-zero exit code should
+    // succeed and zero should fail.
+    ANY_EXIT_ERROR = -1,
+};
 
 ///
 /// Internals
