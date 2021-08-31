@@ -43,11 +43,13 @@ OBJS_SAN    = $(OUTDIR)/src/read_line$(RAWSUF).o \
 OBJS_UNSAN  = $(OBJS_SAN:%.o=%$(UNSANSUF).o)
 ALL_OBJS    = $(OBJS_SAN) $(OBJS_UNSAN)
 
-all: lib man
+all: lib man header
 
 lib: $(LIBS)
 
 man: $(MAN.out)
+
+header: $(INCLUDE.out)
 
 test: $(LIBS)
 	make -C test
@@ -66,7 +68,7 @@ install: all
 	$(SUDO) chmod -R a+rX $(MANDIR)
 
 clean:
-	git clean -fX
+	git clean -fXd
 
 $(OUTDIR)/src/alloc_rt%.o:              DEBUGFLAG =
 %$(RAWSUF).o %$(RAWSUF)$(UNSANSUF).o:   CPPFLAGS += $(RAWFLAG)
